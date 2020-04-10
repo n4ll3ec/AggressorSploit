@@ -1,0 +1,5 @@
+popup beacon_bottom {
+    # menu "PersistenceKit" {
+    include(script_resource("scripts/persistenceAll.cna"));
+    # }
+}

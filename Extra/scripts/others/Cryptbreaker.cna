@@ -1,0 +1,830 @@
+# author sy14r (@_geoff_p_)
+# Big thanks to bluescreenofjeff
+# Heavily based upon @bluescreenofjeff's beaconpire.cna script
+#    https://github.com/bluscreenofjeff/AggressorScripts/tree/master/Beaconpire
+
+# needed imports for custom menu creation
+import java.awt.*; # for borderlayout
+import javax.swing.*; # for jpanel
+import javax.swing.table.*; #tablerowsorter
+import table.*; # generictablemodel
+import ui.*; #atable
+
+import java.awt.BorderLayout;
+import java.awt.EventQueue;
+
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.border.EmptyBorder;
+import java.awt.GridLayout;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.BoxLayout;
+import javax.swing.JList;
+import javax.swing.JButton;
+import javax.swing.SwingConstants;
+import java.awt.GridBagLayout;
+import java.awt.GridBagConstraints;
+import java.awt.Insets;
+import javax.swing.GroupLayout;
+import javax.swing.JLabel;
+import java.awt.FlowLayout;
+import javax.swing.JTable;
+
+# for web requests
+import java.net.*;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+
+#global default server settings
+%cryptbreakerserverSettings["ip"] = "http(s)://cryptbreaker url/ip";
+%cryptbreakerserverSettings["port"] = "443";
+%cryptbreakerserverSettings["token"] = "CRYPTBREAKER API TOKEN";
+%cryptbreakerserverSettings["brute_limit"] = "0";
+%cryptbreakerserverSettings["use_dictionaries"] = "true";
+
+%cryptbreakerAttributes["files"] = @();
+%cryptbreakerAttributes["submitted_crack_jobs"] = @();
+%cryptbreakerAttributes["crack_jobs"] = @();
+%cryptbreakerAttributes["hashes"] = @();
+
+global('%cryptbreakerserverSettings %cryptbreakerAttributes $select_bool $jobssmenu_dialog $notification_dialog $credsToSend');
+
+$select_bool = "False";
+
+#Used to configure Cryptbreaker server settings.
+sub configureServer {
+
+    local('$center $south $c $x $saveButton $cancelButton');
+    global('%cryptbreakerserverSettings');
+
+    # main title and dimensions of the dialog box
+    $configure_server_dialog = customDialog("Configure Cryptbreaker Settings", 590, 235);
+
+    # if the server settings haven't been configured previously, throw some defaults in
+    if (!%cryptbreakerserverSettings){
+        %cryptbreakerserverSettings["ip"] = "127.0.0.1";
+        %cryptbreakerserverSettings["port"] = "3000";
+        %cryptbreakerserverSettings["token"] = "Cryptbreaker API Token Here";
+        %cryptbreakerserverSettings["brute_limit"] = "0";
+        %cryptbreakerserverSettings["use_dictionaries"] = "true";
+    }
+
+    # build out the option list table for the server settings
+    $model = [new GenericTableModel: @("Option", "Value"), "Option", 128];
+    [$model setCellEditable: 1];
+
+    [$model _addEntry: %(Option => "Cryptbreaker IP", Value => %cryptbreakerserverSettings["ip"], Tooltip => "Cryptbreaker's server's IP", Hide => '0')];
+    [$model _addEntry: %(Option => "Cryptbreaker Port", Value => %cryptbreakerserverSettings["port"], Tooltip => "Port Cryptbreaker is listening on", Hide => '0')];
+    [$model _addEntry: %(Option => "Cryptbreaker API Token", Value => %cryptbreakerserverSettings["token"], Tooltip => "Cryptbreaker's API token", Hide => '0')];
+    [$model _addEntry: %(Option => "Use Dictionaries", Value => %cryptbreakerserverSettings["use_dictionaries"], Tooltip => "Specifies whether or not to perform dictionary attacks", Hide => '0')];
+    [$model _addEntry: %(Option => "Bruteforce Limit", Value => %cryptbreakerserverSettings["brute_limit"], Tooltip => "Specifies how many characters to brute force (0 = No Brute Force)", Hide => '0')];
+
+    $table = [new ATable: $model];
+
+    # set up the panes
+    $center = [new JScrollPane: $table];
+    $south = [new JPanel];
+    [$south setLayout: [new BoxLayout: $south, [BoxLayout Y_AXIS]]];
+
+    [$south setLayout: [new GridLayout: 1, 1]];
+
+    $c = [new JPanel];
+    [$c setLayout: [new FlowLayout: [FlowLayout CENTER]]];
+
+    # our buttons
+    # $testconnectionButton = [new JButton: "Test Server Connection"];
+    $saveButton = [new JButton: "Save"];
+    $cancelButton = [new JButton: "Cancel"];
+
+    # add a lambda listener to testconnection dialog
+    # [$testconnectionButton addActionListener: lambda({
+        
+    # 	testConnection();
+
+    #     [$configure_server_dialog setVisible: 0]; # close the dialog off
+    #     })];
+
+    # add a lambda listener to save the settings
+    [$saveButton addActionListener: lambda({
+        
+        syncTable($table);
+        $options = %();
+
+        # grab all the filled in option values from the table
+        for ($x = 0; $x < [$model getRowCount]; $x++) {
+            $options[ [$model getValueAt: $x, 0] ] = [$model getValueAt: $x, 1];
+        }
+
+        # save settings
+        %cryptbreakerserverSettings["ip"] = $options["Cryptbreaker IP"];
+        %cryptbreakerserverSettings["port"] = $options["Cryptbreaker Port"];
+        %cryptbreakerserverSettings["token"] = $options["Cryptbreaker API Token"];
+        # if dictionaries value to lowercase == false then false otherwise true
+        if( [$options["Use Dictionaries"] toLowerCase] eq "false"){
+            %cryptbreakerserverSettings["use_dictionaries"] = "false";
+        } 
+        else {
+            %cryptbreakerserverSettings["use_dictionaries"] = "true";
+        }
+        if($options["Bruteforce Limit"] ismatch "-?(0|[1-9]\\d*)" ){
+            %cryptbreakerserverSettings["brute_limit"] = $options["Bruteforce Limit"];
+        }
+        else {
+            %cryptbreakerserverSettings["brute_limit"] = "0";
+        }
+        
+        elog("\c9[+]\c7 Configured Cobalt Strike to connect to Cryptbreaker at " . %cryptbreakerserverSettings['ip'] . " on port " . %cryptbreakerserverSettings['port'] . " using token \'" . %cryptbreakerserverSettings['token'] . "\' Dictionaries: " . %cryptbreakerserverSettings['use_dictionaries'] . " Brute Limit: " . %cryptbreakerserverSettings['brute_limit']);
+       
+        [$configure_server_dialog setVisible: 0]; # close the dialog off
+        })];
+
+    # add a lambda listener to close dialog without saving (cancel)
+    [$cancelButton addActionListener: lambda({
+        
+        [$configure_server_dialog setVisible: 0]; # close the dialog off
+        })];
+
+    # add the buttons to the frame
+    [$c add: $testconnectionButton];
+    [$c add: $saveButton];
+    [$c add: $cancelButton];
+
+    # add the southern frame that contains the action button
+    [$south add: $c];
+
+    local('$s');
+    $s = [new JSplitPane: [JSplitPane VERTICAL_SPLIT], $north, $center];
+    [$center setPreferredSize: [new Dimension: 0, 0]];
+    
+    [$s resetToPreferredSizes];
+    [$s setOneTouchExpandable: 1];
+
+    [$configure_server_dialog add: $s, [BorderLayout CENTER]];   
+    [$configure_server_dialog add: $south, [BorderLayout SOUTH]];
+
+    [$saveButton requestFocus];
+    [$configure_server_dialog setVisible: 1];
+
+}
+
+# $1 = Titlebar $2 = Message, $3 = Width, $4 = height
+sub displayNotification {
+    local('$center $south $c $x $closeButton');
+    $notification_dialog = customDialog($1, $3, $4);
+
+    # set up the panes
+    $center = [new JLabel: $2, [SwingConstants CENTER]];
+    $south = [new JPanel];
+    [$south setLayout: [new BoxLayout: $south, [BoxLayout Y_AXIS]]];
+
+    [$south setLayout: [new GridLayout: 1, 0]];
+
+    $c = [new JPanel];
+    [$c setLayout: [new FlowLayout: [FlowLayout CENTER]]];
+
+    # our buttons
+    $closeButton = [new JButton: "Ok"];
+
+    #closeButton listener
+    [$closeButton addActionListener: lambda({
+        [$notification_dialog setVisible: 0]; # close the dialog off
+        })];
+
+    # add the buttons to the frame
+    [$c add: $closeButton];
+
+    # add the southern frame that contains the action buttons
+    [$south add: $c];
+
+
+    [$notification_dialog add: $center, [BorderLayout CENTER]];   
+    [$notification_dialog add: $south, [BorderLayout SOUTH]];
+
+    [$closeButton requestFocus];
+    [$notification_dialog setVisible: 1];
+
+}
+
+#menubar options
+menubar("Cryptbreaker", "cryptbreakermenu", 2);
+
+# modify the main "Attacks" menu
+popup cryptbreakermenu {
+    item "Configure Server" {
+        configureServer();
+    }
+    item "Crack All" {
+        displayNotification("Cryptbreaker","Sending Hashes to Cryptbreaker...",300,175);
+        $res = fork(&sendHashesToCryptbreaker, $cryptbreakerAttributes => %cryptbreakerAttributes,$cryptbreakerserverSettings => %cryptbreakerserverSettings, $notification_dialog => $notification_dialog );
+    }
+    item "Check All" {
+        displayNotification("Cryptbreaker","Checking Cryptbreaker for hash data...",300,175);
+        $res = fork(&checkCryptbreaker, $cryptbreakerserverSettings => %cryptbreakerserverSettings, $notification_dialog => $notification_dialog);
+    }
+	item "Crack Jobs" {
+    	jobsMenu();
+    }
+    #item "Pull in Empire Agents" {
+    #	agentsMenu();
+    #}
+}
+
+#Holder Function which has java code to reuse for web requests...
+sub makeWebRequest {
+    $siteUrl = [new URL: "https://cryptbreaker.ngrok.io/api/jobs"];
+    $siteConn = [$siteUrl openConnection];
+    [$siteConn setRequestProperty: "Apikey","de6a7524-2dbc-4846-acf2-8896108c9b95"];
+    $brIn = [new BufferedReader: [new InputStreamReader: [$siteConn getInputStream]]];
+    $inputLine = [new String];
+    $done = 0;
+    $results = "";
+    while($done != 1){
+        $inputLine = [$brIn readLine];
+        $results = $results .$inputLine;
+        if(strlen($inputLine) <= 0) {
+            $done = 1;
+        }
+    }
+    [$brIn close];
+    println($results);
+
+}
+
+sub getCrackJobs {
+    %cryptbreakerAttributes["crack_jobs"] = @();
+    $siteUrl = [new URL:  %cryptbreakerserverSettings["ip"] . ":" . %cryptbreakerserverSettings["port"] . "/api/jobs"];
+    $siteConn = [$siteUrl openConnection];
+    [$siteConn setRequestProperty: "Apikey",%cryptbreakerserverSettings["token"]];
+    $brIn = [new BufferedReader: [new InputStreamReader: [$siteConn getInputStream]]];
+    $inputLine = [new String];
+    $done = 0;
+    $results = "";
+    while($done != 1){
+        $inputLine = [$brIn readLine];
+        $results = $results."\n".$inputLine;
+        if(strlen($inputLine) <= 0) {
+            $done = 1;
+        }
+    }
+    [$brIn close];
+    $splitLine = split("\n",$results);
+    if(size($splitLine) <= 2){
+        foreach $line ($splitLine){
+            if(strlen($line) > 0){
+                $results = replace(replace(replace(replace($line,"\",\"","\",\n\""),"\],\"","\],\n\""),"\\{\"","\\{\n\""),"\\}","\n\\}");                    
+            }
+        }
+    }
+    local('$jobID $status');
+    foreach $line (split("\n",$results)){
+        if("}" isin $line){
+            if((strlen($jobID) > 0) && (strlen($status) > 0) && ($jobID in %cryptbreakerAttributes["submitted_crack_jobs"])) {
+                push(%cryptbreakerAttributes["crack_jobs"],%(_id => $jobID, status => $status));
+                $jobID = "";
+                $status = "";
+            }
+        }
+        if("\"_id\"" isin $line){
+            $jobID = split("\"",$line)[3];
+        }
+        if("\"status\"" isin $line){
+            $status = split("\"",$line)[3];
+        }
+    }    
+}
+
+sub jobsMenu {
+    local('$center $south $c $x  $retrieveResultsButton $refreshButton $closeButton @selected_jobs @selected_rows');
+    getCrackJobs();
+    # main title and dimensions of the dialog box
+    $jobssmenu_dialog = customDialog("Cryptbreaker Jobs", 750, 280);
+
+    # build out the option list table
+    $model = [new GenericTableModel: @("JobID", "Status"), "Option", 128];
+    [$model setCellEditable: 0];
+    $sampleJobs = @(%(_id => "ID1",status => "Running"),%(_id => "ID2",status => "Completed"));
+   	foreach $job_itr (%cryptbreakerAttributes["crack_jobs"]) {
+   		[$model _addEntry: %(JobID => $job_itr["_id"], Status => $job_itr["status"])];	
+   	}
+       
+    $table = [new ATable: $model];
+
+    [[$table getSelectionModel] setSelectionMode: [ListSelectionModel MULTIPLE_INTERVAL_SELECTION]];
+    $sorter = [new TableRowSorter: $model];
+    [$table setRowSorter: $sorter];
+
+
+    # set up the panes
+    $center = [new JScrollPane: $table];
+    $south = [new JPanel];
+    [$south setLayout: [new BoxLayout: $south, [BoxLayout Y_AXIS]]];
+
+    [$south setLayout: [new GridLayout: 1, 0]];
+
+    $c = [new JPanel];
+    [$c setLayout: [new FlowLayout: [FlowLayout CENTER]]];
+
+    # our buttons
+    $retrieveResultsButton = [new JButton: "Get Results for Selected Job(s)"];
+    $pauseJobsButton = [new JButton: "Pause/Resume Selected Job(s)"];
+    $refreshButton = [new JButton: "Refresh List"];
+    $closeButton = [new JButton: "Close Window"];
+
+    #retrieveResultsButton listener
+    [$retrieveResultsButton addActionListener: lambda({
+
+		syncTable($table);
+		@selected_rows = [$table getSelectedRows];
+		@selected_jobs = @();
+		foreach $row (@selected_rows) {
+            if(("Completed" isin [$table getValueAt: $row, 1]) || ("Paused" isin [$table getValueAt: $row, 1]) ){
+			    add(@selected_jobs,[$table getValueAt: $row, 0]);
+            }
+		}
+
+		if (size(@selected_jobs) < 1){
+			show_message("Please select at least one Completed/Paused Job");
+		}
+		
+		else {
+            foreach $jobID (@selected_jobs){
+                $siteUrl = [new URL:  %cryptbreakerserverSettings["ip"] . ":" . %cryptbreakerserverSettings["port"] . "/api/jobs/".$jobID."/hashes?cracked=true"];
+                $siteConn = [$siteUrl openConnection];
+                [$siteConn setRequestProperty: "Apikey",%cryptbreakerserverSettings["token"]];
+                $brIn = [new BufferedReader: [new InputStreamReader: [$siteConn getInputStream]]];
+                $inputLine = [new String];
+                $done = 0;
+                $results = "";
+                while($done != 1){
+                    $inputLine = [$brIn readLine];
+                    $results = $results."\n".$inputLine;
+                    if(strlen($inputLine) <= 0) {
+                        $done = 1;
+                    }
+                }
+                [$brIn close];
+                #println($results);
+                $splitLine = split("\n",$results);
+                if(size($splitLine) <= 2){
+                    foreach $line ($splitLine){
+                        if(strlen($line) > 0){
+                            $results = replace(replace(replace(replace($line,"\",\"","\",\n\""),"\],\"","\],\n\""),"\\{\"","\\{\n\""),"\\}","\n\\}");                    
+                        }
+                    }
+                }
+                # adding cracked passwords
+                local('$data $plaintext');
+                foreach $line (split("\n",$results)){
+                    # if we close an object and have defined $data and $plaintext, that implies that we have a cracked password...
+                    if("}" isin $line){
+                        if((strlen($data) > 0) && (strlen($plaintext) > 0)){
+                            #println($data." -> ".$plaintext);
+                            foreach $existingCred (credentials()) {
+                                $user = $existingCred['user'];
+                                $password = $existingCred['password'];
+                                $host = $existingCred['host'];
+                                $realm = $existingCred['realm'];
+                                $source = $existingCred['source'];
+                                if ("cryptbreaker" !isin $source) {
+                                    if([$password toLowerCase] eq [$data toLowerCase]) {
+                                        credential_add($user,$plaintext,$realm,"cryptbreaker - ".$data." - Job: ".$jobID,$host);	
+                                    }
+                                }
+                            }
+                            $data = "";
+                            $plaintext = "";
+                        }
+                    }
+                    if("\"data\"" isin $line){
+                        $data =  split("\"",$line)[3];
+                    }
+                    if("\"plaintext\"" isin $line){
+                        $plaintext =  split("\"",$line)[3];
+                    }
+                } 
+            }
+            
+            [$jobssmenu_dialog setVisible: 0];		
+            }
+		})];
+
+    #pauseJobsButton listener
+    [$pauseJobsButton addActionListener: lambda({
+
+		syncTable($table);
+		@selected_rows = [$table getSelectedRows];
+		@selected_jobs_to_resume = @();
+        @selected_jobs_to_pause = @();
+		foreach $row (@selected_rows) {
+            if("Paused" isin [$table getValueAt: $row, 1]){
+			    add(@selected_jobs_to_resume,[$table getValueAt: $row, 0]);
+            }
+            else {
+                add(@selected_jobs_to_pause,[$table getValueAt: $row, 0]);
+            }
+		}
+		
+        foreach $jobID (@selected_jobs_to_pause){
+            $siteUrl = [new URL:  %cryptbreakerserverSettings["ip"] . ":" . %cryptbreakerserverSettings["port"] . "/api/jobs/".$jobID."/pause"];
+            $siteConn = [$siteUrl openConnection];
+            [$siteConn setRequestProperty: "Apikey",%cryptbreakerserverSettings["token"]];
+            $brIn = [new BufferedReader: [new InputStreamReader: [$siteConn getInputStream]]];
+            $inputLine = [new String];
+            $done = 0;
+            $results = "";
+            while($done != 1){
+                $inputLine = [$brIn readLine];
+                $results = $results."\n".$inputLine;
+                if(strlen($inputLine) <= 0) {
+                    $done = 1;
+                }
+            }
+            [$brIn close];
+            println($results);
+        }
+
+        foreach $jobID (@selected_jobs_to_resume){
+            $siteUrl = [new URL:  %cryptbreakerserverSettings["ip"] . ":" . %cryptbreakerserverSettings["port"] . "/api/jobs/".$jobID."/resume"];
+            $siteConn = [$siteUrl openConnection];
+            [$siteConn setRequestProperty: "Apikey",%cryptbreakerserverSettings["token"]];
+            $brIn = [new BufferedReader: [new InputStreamReader: [$siteConn getInputStream]]];
+            $inputLine = [new String];
+            $done = 0;
+            $results = "";
+            while($done != 1){
+                $inputLine = [$brIn readLine];
+                $results = $results."\n".$inputLine;
+                if(strlen($inputLine) <= 0) {
+                    $done = 1;
+                }
+            }
+            [$brIn close];
+            println($results);
+        }
+        [$jobssmenu_dialog setVisible: 0]; # close the dialog off
+        jobsMenu();
+		})];
+
+    #refreshButton listener
+    [$refreshButton addActionListener: lambda({
+        [$jobssmenu_dialog setVisible: 0]; # close the dialog off
+        jobsMenu();
+        })];
+
+    #closeButton listener
+    [$closeButton addActionListener: lambda({
+        [$jobssmenu_dialog setVisible: 0]; # close the dialog off
+        })];
+
+    # add the buttons to the frame
+    [$c add: $retrieveResultsButton];
+    [$c add: $pauseJobsButton];	
+    [$c add: $refreshButton];
+    [$c add: $closeButton];
+
+    # add the southern frame that contains the action buttons
+    [$south add: $c];
+
+    local('$s');
+    $s = [new JSplitPane: [JSplitPane VERTICAL_SPLIT], $north, $center];
+    [$center setPreferredSize: [new Dimension: 0, 0]];
+    
+    [$s resetToPreferredSizes];
+    [$s setOneTouchExpandable: 1];
+
+    [$jobssmenu_dialog add: $s, [BorderLayout CENTER]];   
+    [$jobssmenu_dialog add: $south, [BorderLayout SOUTH]];
+
+    [$retrieveResultsButton requestFocus];
+    [$jobssmenu_dialog setVisible: 1];
+}
+
+# $1 = credentials array - have it creating base64 data, need to curl to post to cb and handle jobs
+sub sendHashesToCryptbreaker {
+    $credsToSend = @();
+    $creds = $cryptbreakerAttributes["hashes"];
+    if(size($creds) == 0){
+        $creds = credentials();
+    }
+    foreach $cred ($creds){
+        $pwdumpLine = [new StringBuffer: ""];
+        if(strlen($cred["realm"]) > 0){
+            [$pwdumpLine append: "$cred['realm']\\"];
+        }
+        if(strlen($cred["user"]) > 0){
+            [$pwdumpLine append: "$cred['user']"];
+        }
+        [$pwdumpLine append: "::".$cred['password'].":".$cred['password'].":::"];
+        if(strlen($cred['password']) == 32  && ("cryptbreaker" !isin $cred['source'])  && ($cred['password'])){
+            push($credsToSend, $pwdumpLine);
+        }
+    }
+    if(size($credsToSend) > 0){
+        $dataToSend = base64_encode(join("\n",$credsToSend));
+        $bodyPayload = "{\"fileName\":\"CS-Upload.txt\",\"fileData\":\"".$dataToSend."\",\"bruteLimit\":\"".$cryptbreakerserverSettings["brute_limit"]."\",\"useDictionaries\":".$cryptbreakerserverSettings["use_dictionaries"]."}";
+        
+        # This is where we're working to upload hashes...
+        $siteUrl = [new URL:  $cryptbreakerserverSettings["ip"] . ":" . $cryptbreakerserverSettings["port"] . "/api/crack/file"];
+        $siteConn = [$siteUrl openConnection];
+        [$siteConn setDoOutput: true];
+        [$siteConn setRequestProperty: "Apikey",$cryptbreakerserverSettings["token"]];
+        [$siteConn setRequestMethod: "POST"];
+        $out = [$bodyPayload getBytes:[StandardCharsets UTF_8]];
+        $length = [$out length];
+        [$siteConn setFixedLengthStreamingMode: $length];
+        [$siteConn setRequestProperty: "Content-Type", "application/json; charset=UTF-8"];
+        $os = [$siteConn getOutputStream];
+        [$os write: $out];
+        $brIn = [new BufferedReader: [new InputStreamReader: [$siteConn getInputStream]]];
+        $inputLine = [new String];
+        $done = 0;
+        $results = "";
+        
+        while($done != 1){
+            $inputLine = [$brIn readLine];
+            $results = $results."\n".$inputLine;
+            if(strlen($inputLine) <= 0) {
+                $done = 1;
+            }
+        }
+        [$brIn close];
+        local('$jobID $status');
+
+        $splitLine = split("\n",$results);
+        if(size($splitLine) <= 2){
+            foreach $line ($splitLine){
+                if(strlen($line) > 0){
+                    $results = replace(replace(replace(replace($line,"\",\"","\",\n\""),"\],\"","\],\n\""),"\\{\"","\\{\n\""),"\\}","\n\\}");                    
+                }
+            }
+        }
+        
+        println($results);
+        local('$data $plaintext');
+        foreach $line (split("\n",$results)){
+            if("\"fileID\"" isin $line){
+                println(split("\"",$line)[3]);
+                push($cryptbreakerAttributes["files"], split("\"",$line)[3]);
+        }
+            if("\"crackJobID\"" isin $line){
+                println(split("\"",$line)[3]);
+                push($cryptbreakerAttributes["submitted_crack_jobs"], split("\"",$line)[3]);
+            }
+            # if we close an object and have defined $data and $plaintext, that implies that we have a cracked password...
+            if("}" isin $line){
+                if((strlen($data) > 0) && (strlen($plaintext) > 0)){
+                    foreach $existingCred (credentials()) {
+                        $user = $existingCred['user'];
+                        $password = $existingCred['password'];
+                        $host = $existingCred['host'];
+                        $realm = $existingCred['realm'];
+                        $source = $existingCred['source'];
+                        if ("cryptbreaker" !isin $source) {
+                            if([$password toLowerCase] eq [$data toLowerCase]) {
+                                credential_add($user,$plaintext,$realm,"cryptbreaker - ".$data." - Crack Submission",$host);	
+                            }
+                        }
+                    }
+                    $data = "";
+                    $plaintext = "";
+                }
+            }
+            if("\"data\"" isin $line){
+                $data =  split("\"",$line)[3];
+            }
+            if("\"plaintext\"" isin $line){
+                $plaintext =  split("\"",$line)[3];
+            }
+        } 
+    }
+    [$notification_dialog setVisible: 0];
+    displayNotification("Cryptbreaker","Hashes Sent Successfully",300,175);
+    clear($cryptbreakerAttributes["hashes"]);
+    return $cryptbreakerAttributes;
+}
+
+# $1 = credentials array - have it creating base64 data, need to curl to post to cb and handle jobs
+sub checkCryptbreaker {
+    $credsToSend = @();
+    $creds = $cryptbreakerAttributes["hashes"];
+    if(size($creds) == 0){
+        $creds = credentials();
+    }
+    foreach $cred ($creds){
+        if((strlen($cred['password']) == 32) && ("cryptbreaker" !isin $cred['source'])){
+            push($credsToSend, $cred['password']);
+        }
+    }
+    $dataToSend = join("\",\"",$credsToSend);
+    $bodyPayload = "{\"hashes\":[\"".$dataToSend."\"]}";
+    #println($bodyPayload);
+    
+    # This is where we're working to upload hashes...
+    $siteUrl = [new URL:  $cryptbreakerserverSettings["ip"] . ":" . $cryptbreakerserverSettings["port"] . "/api/hashes/check"];
+    $siteConn = [$siteUrl openConnection];
+    [$siteConn setDoOutput: true];
+    [$siteConn setRequestProperty: "Apikey",$cryptbreakerserverSettings["token"]];
+    [$siteConn setRequestMethod: "POST"];
+    $out = [$bodyPayload getBytes:[StandardCharsets UTF_8]];
+    $length = [$out length];
+    [$siteConn setFixedLengthStreamingMode: $length];
+    [$siteConn setRequestProperty: "Content-Type", "application/json; charset=UTF-8"];
+    $os = [$siteConn getOutputStream];
+    [$os write: $out];
+    $brIn = [new BufferedReader: [new InputStreamReader: [$siteConn getInputStream]]];
+    $inputLine = [new String];
+    $done = 0;
+    $results = "";
+    while($done != 1){
+        $inputLine = [$brIn readLine];
+        $results = $results."\n".$inputLine;
+        if(strlen($inputLine) <= 0) {
+            $done = 1;
+        }
+    }
+    [$brIn close];
+    #println($results);
+    $splitLine = split("\n",$results);
+    if(size($splitLine) <= 2){
+        foreach $line ($splitLine){
+            if(strlen($line) > 0){
+                $results = replace(replace(replace(replace($line,"\",\"","\",\n\""),"\],\"","\],\n\""),"\\{\"","\\{\n\""),"\\}","\n\\}");                    
+            }
+        }
+    }
+    local('$data $plaintext');
+    foreach $line (split("\n",$results)){
+        # if we close an object and have defined $data and $plaintext, that implies that we have a cracked password...
+        if("}" isin $line){
+            if((strlen($data) > 0) && (strlen($plaintext) > 0)){
+                #println($data." -> ".$plaintext);
+                foreach $existingCred (credentials()) {
+                    $user = $existingCred['user'];
+                    $password = $existingCred['password'];
+                    $host = $existingCred['host'];
+                    $realm = $existingCred['realm'];
+                    $source = $existingCred['source'];
+                    if ("cryptbreaker" !isin $source) {
+                        if([$password toLowerCase] eq [$data toLowerCase]) {
+                            credential_add($user,$plaintext,$realm,"cryptbreaker - ".$data." - Check Submission",$host);	
+                        }
+                    }
+                }
+                $data = "";
+                $plaintext = "";
+            }
+        }
+        if("\"data\"" isin $line){
+            $data =  split("\"",$line)[3];
+        }
+        if("\"plaintext\"" isin $line){
+            $plaintext =  split("\"",$line)[3];
+        }
+    } 
+    # show a notification here...
+    [$notification_dialog setVisible: 0];
+    displayNotification("Cryptbreaker","Hash Check Complete",200,150);
+    clear($cryptbreakerAttributes["hashes"]);
+}
+
+# popup menu for credential objects to send to cryptbreaker that way
+popup credentials {
+	item "Send to Cryptbreaker" {
+        $select_bool = "True";
+        clear(%cryptbreakerAttributes["hashes"]);
+        foreach $credential ($1) {
+            add(%cryptbreakerAttributes["hashes"],$credential);
+        }
+        displayNotification("Cryptbreaker","Sending Hashes to Cryptbreaker...",300,175);
+        $res = fork(&sendHashesToCryptbreaker, $cryptbreakerAttributes => %cryptbreakerAttributes,$cryptbreakerserverSettings => %cryptbreakerserverSettings, $notification_dialog => $notification_dialog );
+	}
+    item "Check Cryptbreaker" {
+        $select_bool = "True";
+        clear(%cryptbreakerAttributes["hashes"]);
+        foreach $credential ($1) {
+            add(%cryptbreakerAttributes["hashes"],$credential);
+        }
+        displayNotification("Cryptbreaker","Checking Cryptbreaker for hash data...",300,175);
+        $res = fork(&checkCryptbreaker,$cryptbreakerAttributes => %cryptbreakerAttributes, $cryptbreakerserverSettings => %cryptbreakerserverSettings, $notification_dialog => $notification_dialog);
+	}
+}
+
+###################################################
+#
+# GUI Helper Methods
+#   these are all from armitage/scripts/gui.sl
+#
+###################################################
+# creates a list dialog, from armitage/scripts/gui.sl
+# $1 = title, $2 = button text, $3 = columns, $4 = rows, $5 = callback
+
+sub quickListDialog {
+    local('$dialog $panel $table $row $model $button $sorter $after $a $tablef');
+    $dialog = customDialog($1, $width, $height);
+    $panel = [new JPanel];
+    [$panel setLayout: [new BorderLayout]];
+    
+    ($table, $model) = setupTable($3[0], sublist($3, 1), $4);
+    [$panel add: [new JScrollPane: $table], [BorderLayout CENTER]];
+
+    if ($tablef !is $null) {
+        [$tablef: $table, $model];
+    }
+    
+    $button = [new JButton: $2];
+    [$button addActionListener: lambda({
+        [$callback : [$model getSelectedValueFromColumn: $table, $lead], $table, $model]; 
+        [$dialog setVisible: 0];
+    }, \$dialog, $callback => $5, \$model, \$table, $lead => $3[0])];
+
+    local('$south');
+    $south = [new JPanel];
+        [$south setLayout: [new BoxLayout: $south, [BoxLayout Y_AXIS]]];
+
+    if ($after !is $null) {
+        foreach $a ($after) {
+            [$south add: $a];
+        }
+    }
+    [$south add: center($button)];
+
+    [$panel add: $south, [BorderLayout SOUTH]];
+    [$dialog add: $panel, [BorderLayout CENTER]];
+    [$dialog show];
+    [$dialog setVisible: 1];
+}
+
+# from armitage/scripts/gui.sl
+sub setupTable {
+    local('$table $model $sorter $row $index $col');
+    $model = [new GenericTableModel: $2, $1, 8];
+    foreach $row ($3) {
+        [$model _addEntry: $row];
+        }
+
+    $table = [new ATable: $model];
+    [[$table getSelectionModel] setSelectionMode: [ListSelectionModel SINGLE_SELECTION]];
+    $sorter = [new TableRowSorter: $model];
+    [$table setRowSorter: $sorter];
+
+    # make sure our columns have sorters that make sense
+    foreach $index => $col ($2) {
+        if ($col eq "session_host" || $col eq "host" || $col eq "Host") {
+            [$sorter setComparator: $index, &compareHosts];
+        }
+        else if ($col eq "port" || $col eq "sid" || $col eq "Port") {
+            [$sorter setComparator: $index, { return $1 <=> $2; }];
+        }
+    }
+    
+    return @($table, $model);
+}
+
+# from armitage/scripts/gui.sl
+sub center {
+    local('$panel $c');
+    $panel = [new JPanel];
+    [$panel setLayout: [new FlowLayout: [FlowLayout CENTER]]];
+
+    foreach $c (@_) {
+        [$panel add: $c];
+    }
+
+    return $panel;
+}
+
+# from armitage/scripts/gui.sl
+sub left {
+    local('$panel $c');
+    $panel = [new JPanel];
+    [$panel setLayout: [new FlowLayout: [FlowLayout LEFT]]];
+
+    foreach $c (@_) {
+        [$panel add: $c];
+    }
+
+    return $panel;
+}
+
+# from armitage/scripts/gui.sl
+sub syncTable {
+    if ([$1 isEditing]) {
+        [[$1 getCellEditor] stopCellEditing];
+    }
+}
+
+# helper, from armitage/scripts/gui.sl
+sub customDialog {
+    local('$dialog');
+        $dialog = [new JDialog: $__frame__, $1];
+        [$dialog setSize: $2, $3];
+        [$dialog setLayout: [new BorderLayout]];
+        [$dialog setLocationRelativeTo: $__frame__];
+    return $dialog;
+}
+
+# helpers, from armitage/scripts/gui.sl
+sub tableRenderer {
+    return [ATable getDefaultTableRenderer: $1, $2];
+}

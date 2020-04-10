@@ -1,0 +1,16 @@
+# load all toolkit
+include(script_resource("PrivEsc/PrivEscKit.cna"));
+include(script_resource("CredentialHarvest/CredentialKit.cna"));
+include(script_resource("Persistence/PersistenceKit.cna"));
+include(script_resource("Recon/ReconKit.cna"))
+include(script_resource("LateralMovement/LateralMoveKit.cna"));
+include(script_resource("VulnScan/VulnKit.cna"));
+include(script_resource("Exploit/ExploitKit.cna"));
+include(script_resource("Pivoting/PivotKit.cna"));
+include(script_resource("Evasion/EvasionKit.cna"));
+include(script_resource("MiTM/MiTMKit.cna"));
+include(script_resource("Extra/ExtraKit.cna"));
+include(script_resource("Enhancement/EnhanceKit.cna"));
+
+# 
+elog("\cBAggressorSploit loaded! ");

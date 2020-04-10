@@ -1,0 +1,15 @@
+#########
+# Automatical syncs all downloads
+#########
+
+
+on beacon_output_alt {
+    #println("output alt" . $2);
+    if ($2 is match 'download of .+ is complete')
+    {
+        sync_download($serverPath,"/root/Desktop/cobaltStrikeDownloads")
+    }
+}
+
+
+#download of 20190731130115_BloodHound.zip is complete

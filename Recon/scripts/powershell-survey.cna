@@ -1,0 +1,43 @@
+# surveying of powershell on targets
+
+    menu "PowerShell Env Check" {
+        item "Check PowerShell Engines"{
+            local('$bid');
+            foreach $bid ($1){
+                binput($bid, "Check Powershell Engines");
+                bpowershell($bid, "(Get-ItemProperty HKLM:\\SOFTWARE\\Microsoft\\PowerShell\\*\\PowerShellEngine -Name PowerShellVersion).PowerShellVersion");
+            }
+        }
+        item "Check CLR Versions"{
+            local('$bid');
+            foreach $bid ($1){
+                binput($bid, "Check CLR Versions");
+                bpowershell($bid, "(Test-Path \$env:windir\\Microsoft.Net\\Framework\\v2.0.50727\\System.dll)");
+                bpowershell($bid, "(Test-Path \$env:windir\\Microsoft.Net\\Framework\\v4.0.30319\\System.dll)");
+            }
+        }
+        
+        item "Check PowerShell Logging"{
+            local('$bid');
+            foreach $bid ($1){
+                binput($bid, "Check PowerShell Logging");
+                # Check if logging is enabled
+                blog($1, "Checking for PowerShell transcription");
+                bpowerpick($1, 'if((Get-ItemProperty "HKLM:\SOFTWARE\Wow6432Node\Policies\Microsoft\Windows\PowerShell\Transcription" -ErrorAction SilentlyContinue).EnableTranscription -ne $null) { Write-Output "PowerShell Transcription is enabled!" }');
+
+                blog($1, "Checking for PowerShell invocation header logging");
+                bpowerpick($1, 'if((Get-ItemProperty "HKLM:\SOFTWARE\Wow6432Node\Policies\Microsoft\Windows\PowerShell\Transcription" -ErrorAction SilentlyContinue).EnableInvocationHeader -ne $null) { Write-Output "PowerShell Invocation Header logging is enabled!" }');
+
+                blog($1, "Checking for PowerShell script block logging");
+                bpowerpick($1, 'if((Get-ItemProperty "HKLM:\SOFTWARE\Wow6432Node\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -ErrorAction SilentlyContinue).EnableScriptBlockLogging -ne $null) { Write-Output "PowerShell Script Block Logging is enabled!" }');
+                
+                blog($1, "Checking for PowerShell module logging");
+                bpowerpick($1, 'if((Get-ItemProperty "HKLM:\SOFTWARE\Wow6432Node\Policies\Microsoft\Windows\PowerShell\ModuleLogging" -ErrorAction SilentlyContinue).EnableModuleLogging -ne $null) { Write-Output "PowerShell Module Logging is enabled!" }');
+                    # bpowershell($bid, "[Bool](Get-ItemProperty 'HKLM:\\SOFTWARE\\Wow6432Node\\Policies\\Microsoft\\Windows\\PowerShell\\Transcription' -ErrorAction SilentlyContinue).EnableTranscripting");
+                # bpowershell($bid, "[Bool](Get-ItemProperty 'HKLM:\\SOFTWARE\\Wow6432Node\\Policies\\Microsoft\\Windows\\Power Shell\\ModuleLogging' -ErrorAction SilentlyContinue).EnableModuleLogging");
+                # bpowershell($bid, "[Bool](Get-ItemProperty 'HKLM:\\SOFTWARE\\Wow6432Node\\Policies\\Microsoft\\Windows\\Power Shell\\ScriptBlockLogging' -ErrorAction SilentlyContinue).EnableScriptBlockLogging");
+            }
+        }
+
+
+    }

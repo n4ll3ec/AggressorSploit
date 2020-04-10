@@ -1,0 +1,48 @@
+###########
+# Originaly made by: 001SPARTaN
+# Grab all screenshots and download
+###########
+
+
+sub getScreenshots {
+    # Iterate through screenshots
+    prompt_directory_open("Choose a location to save screenshots: ", $null, false, 
+    {
+        foreach %s (screenshots()) {
+        # Each screenshot is stored as 
+        # %(data => <BINARY DATA>, bid => <BID>, when => <TIMESTAMP>)
+        $bid = %s['bid'];
+        # Pull computer name, timestamp so we can name files appropriately
+        $computer = binfo($bid, "computer");
+        $timestamp = %s['when'];
+        # Pull data so that we can write to file
+        $data = %s['data'];
+
+        # Filename is COMPUTERNAME_TIMESTAMP.jpg
+        #$fname = $computer . "_" . $timestamp . ".jpg";
+        $fname = $timestamp . ".jpg";
+
+        $fpath = $1 . "/" . $computer . "/";
+        # Open file for writing as $handle
+        # Change to whatever directory you want (e.g. '>engagement/screenshots/$fname')
+        if (!-isDir $fpath)
+        {
+            mkdir($fpath);
+        }
+        $saveFile = $fpath . $fname;
+        $handle = openf(">$saveFile");
+        # Write $data to the file handle
+        writeb($handle, $data);
+        # Close file handle
+        closef($handle);
+        println("Saving screenshot: " . $saveFile);
+        }
+    });
+}
+
+# Add item to the "Cobalt Strike" menu
+popup reporting {
+    item "Export Screenshots" {
+        getScreenshots();
+    }
+}

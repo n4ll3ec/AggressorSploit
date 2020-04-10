@@ -1,0 +1,39 @@
+bind Ctrl+Right {
+    nextTab();
+}
+
+bind Ctrl+Left {
+    previousTab();
+}
+
+
+popup beacon_bottom {
+    menu "EnhanceKit" {
+        menu "Beacon Enhance"{  
+        } 
+        include(script_resource("scripts/beacon-tweak.cna"));
+        include(script_resource("scripts/beacon-telegram-notify.cna"));
+        include(script_resource("scripts/beacon-slack-notify.cna"));
+        include(script_resource("scripts/beacon-process-colorize.cna"));
+        include(script_resource("scripts/beacon-ProcessTree.cna"));
+        include(script_resource("scripts/beacon-process-quickrundown.cna"));
+        include(script_resource("scripts/beacon-process-monitor.cna"));
+       
+        menu "Cobalt Enhance" {
+           include(script_resource("scripts/cobalt-auto-sync-downloads.cna"));
+           include(script_resource("scripts/cobalt-log-visualize.cna"));
+        }
+
+        menu "Operation Enhance"{
+            item "Auto Migrate" {
+                include(script_resource("scripts/ops-auto-migrate.cna"));
+            }
+            item "Auto PPID" {
+                include(script_resource("scripts/ops-auto-set-ppid.cna"));
+            }
+            item "SMB Beacon Auto-Checkin" {
+                include(script_resource("scripts/ops-smb-autocheckin.cna"));
+            }
+        }
+    }
+}

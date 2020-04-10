@@ -1,0 +1,26 @@
+#Randomizes the sleep and jitter base on min/max variables below every 5 minutes
+#Put 'randOff' in the note of the beacon to be ignored
+
+on heartbeat_30s {
+
+    $maxTime = 60;
+    $maxJitter = 50;
+    $minTime = 5;
+    $minJitter = 10;
+
+    foreach $beacon (beacons()){
+        if ("randOff" isin $beacon['note']){
+            continue;
+        }
+        $sleepTime = rand($maxTime);
+        $sleepJitter = rand($maxJitter);
+        while ($sleepTime < $minTime)
+        {
+            $sleepTime = rand($maxTime);
+        }
+        while ($sleepJitter < $minJitter){
+            $sleepJitter = rand($maxJitter);
+        }
+        bsleep($beacon['id'],$sleepTime,$sleepJitter);
+    }
+}

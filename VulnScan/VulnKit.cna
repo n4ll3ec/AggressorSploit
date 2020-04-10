@@ -1,0 +1,10 @@
+popup beacon_bottom {
+    menu "VulnKit" {
+        item "K8CScan"{
+            include(script_resource("scripts/K8Cscan.cna"));
+        }
+        item "Ladon"{
+            include(script_resource("scripts/Ladon.cna"));
+        }
+    }   
+}

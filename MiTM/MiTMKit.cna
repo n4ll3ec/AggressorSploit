@@ -1,0 +1,7 @@
+#  
+popup beacon_bottom {
+    menu "MiTM Kit" {
+        # item Inveigh
+        include(script_resource("scripts/inveigh.cna"));
+    }
+}

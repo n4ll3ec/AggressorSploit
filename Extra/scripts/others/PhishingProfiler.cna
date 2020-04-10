@@ -1,0 +1,33 @@
+# Creates a tab delimited file with the fields: tag, timestamp, ip address, token, email, method, uri, user-agent
+on web_hit{
+
+    # Check if any parameters are present	
+    if (size($8) > 0 )
+    {
+        # Get the parameters
+        %parameters = $8;
+
+        # Determine if the ID is in the parameters
+        $idInParams = iff("id" in %parameters, "true", "false");
+
+        # Check if the ID was in the parameters
+        if ($idInParams eq "true")
+        {
+            # Get the data
+            $tag = "web";
+            $timestamp = formatDate($9, "MM/dd/yyyy HH:mm:ss");
+            $ip = $3;
+            $token = %parameters["id"];
+            $email = tokenToEmail(%parameters["id"]);
+            $method = $1;
+            $uri = $2;
+            $userAgent = $4;
+
+            # Combine the data
+            $data = "$tag\t$timestamp\t$ip\t$token\t$email\t$method\t$uri\t$userAgent";
+
+            # Write the data to the Event Log console and to the events.tsv log file
+            elog("$data");
+        }
+    }
+}

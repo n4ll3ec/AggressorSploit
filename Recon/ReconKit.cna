@@ -1,0 +1,129 @@
+popup beacon_bottom{
+    menu "ReconKit" {
+
+        # PowerShell Environment Check
+        include(script_resource("scripts/powershell-survey.cna"));
+        
+        # item "PowerView"{
+        include(script_resource("scripts/PowerView3.cna"));
+        # }
+        
+        # 
+        # item "SharpHound" {
+        include(script_resource("scripts/SharpHound.cna"));
+        # include(script_resource('scripts/sharphound-zh.cna'));
+        # }
+        
+        item "BloodHound"{
+            include(script_resource("scripts/bloodhound.cna"));
+        }
+
+        # CSharpTools
+        menu "SharpTools"{
+            include(script_resource("scripts/CSharpTools.cna"));
+        }
+
+        # internal recon
+        include(script_resource("scripts/internal_recon.cna"));
+        #
+        menu "Other" {
+            item "Check VM" {
+                local('$bid');
+                foreach $bid ($1){
+                    # binput($1, "powershell-import Check-VM.ps1");
+                    bpowershell_import($1, script_resource("modules/Check-VM.ps1"));
+                    binput($1, "powershell Check-VM");
+                    bpowerpick($1, "Check-VM");
+                }
+            }
+
+            item "Determine Architecture (64 vs 32)" {
+                local('$bid');
+                foreach $bid ($1){
+                    binput($1, "Get OS Architecture");
+                    bshell($1, "wmic os get osarchitecture");
+                }
+            }
+            
+            item "Host Recon" {
+                local('$bid');
+                foreach $bid ($1){
+                    bpowershell_import($1, script_resource("EnumKit/scripts/HostRecon.ps1"));
+                    bpowershell($1, "Invoke-HostRecon");
+                }
+            }
+
+            item "Show Host Uptime" {
+                local('$bid');
+                foreach $bid ($1){
+                    binput($1, "Get Host Uptime");
+                    bpowershell($1, "net statistics server| Select-String \"Statistics since\"");
+                }
+            }
+            item "List WLAN Profiles"{
+                local('$bid');
+                foreach $bid ($1){
+                    binput($1, "shell netsh wlan show profiles name=\"*\" key=clear");
+                    bshell($1, "netsh wlan show profiles name=\"*\" key=clear");
+                }
+            }
+            item "Is User Local Admin?"{
+                local('$bid');
+                foreach $bid ($1){
+                    binput($1, "powershell Is-UserLocalAdmin");
+                    bpowershell($1, "([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] \"Administrator\")");
+                }
+            }
+            item "ipinfo.io Check"{
+                local('$bid');
+                foreach $bid ($1){
+                    binput($1, "powershell (New-Object System.Net.WebClient).DownloadString(\"http://ipinfo.io\")");
+                    bpowershell($1, "(New-Object System.Net.WebClient).DownloadString(\"http://ipinfo.io\")");
+                }
+            }
+            item "List Installed Applications"{
+                local('$bid');
+                foreach $bid ($1){
+                    binput($1, "shell wmic product get Name,Version,Description /format:csv");
+                    bshell($1, "wmic product get Name,Version,Description /format:csv");
+                }
+            }
+            item "Import Get-MicrophoneAudio"{
+                local('$bid');
+                foreach $bid ($1){
+                    binput($1, "powershell-import Get-MicrophoneAudio.ps1");
+                    bpowershell_import($1, script_resource("EnumKit/scripts/Get-MicrophoneAudio.ps1"));
+                    blog($1, "Once imported, run \c8Get-Help Get-MicrophoneAudio -full\c0 for full usage instructions");
+                }
+            }
+
+            item "Idle Time"{
+                bpowershell_import($1,script_resource("EnumKit/scripts/IdleTime.ps1"));
+                bpowerpick($1,"IdleTime");
+
+            }
+            
+            item "Get CB Server Location"{
+                local('$bid');
+                foreach $bid ($1){
+                    binput($1, "shell type C:\\Windows\\CarbonBlack\\Sensor.LOG | findstr SensorBackendServer");
+                    bshell($1, "type C:\\Windows\\CarbonBlack\\Sensor.LOG | findstr SensorBackendServer");
+                }
+            }
+        }
+
+        item "ANGRYPUPPY" {
+            include(script_resource("scripts/ANGRYPUPPY.cna"));
+        }
+
+        menu "Network Discover"{
+            # Ping using ip in hex format
+            item "Hex Ping" {
+                include(script_resource("scripts/hex-ping.cna"));
+            }
+
+            # item "nbtscan" {
+            include(script_resource("scripts/nbtscan.cna"));
+        }
+    }
+}

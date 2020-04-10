@@ -1,0 +1,73 @@
+# Collection of commands to run in the script console
+# vulp1n3@gmail.com
+
+
+# show targets with specified port open that also have banners
+command show_hosts_with_port_banner {
+    println("Hosts with banners on $1");
+    foreach $entry (services()) {
+        if ($entry['port'] == $1) {
+            $addr = "$entry['address']";
+            if ('banner' in $entry) {
+                println("$[18]addr $entry['banner']");
+            }
+        }
+    }
+}
+
+# show targets with specified port open
+command show_hosts_with_port {
+    println("Hosts with open port $1");
+    foreach $entry (services()) {
+        if ($entry['port'] == $1) {
+            $addr = "$entry['address']";
+            if ('banner' in $entry) {
+                println("$[18]addr $entry['banner']");
+            } else {
+                println("$[18]addr");
+            }
+        }
+    }
+}
+
+# show the open ports on target
+command show_ports on host {
+    println("Open ports on $1");
+    foreach $entry (services()) {
+        if ($entry['address'] eq $1) {
+            $port = "$entry['port']";
+            if ('banner' in $entry) {
+                println("$[7]port $entry['banner']");
+            } else {
+                println("$[7]port");
+            }
+        }
+    }
+}
+
+# show open ports within network range A.B.C.D-E
+# It only increments the final octet
+command show_services_for_range {
+    println("Open ports for range $1");
+    $saddr = split('-',$1)[0];
+    $soct = split('\.',$saddr)[-1];
+    $base = join('.',sublist(split('\.',$1),0,3));
+    $eoct = split('-',$1)[1];
+    @theaddrs = @();
+    for ($oct = $soct; $oct <= $eoct; $oct++) {
+        add(@theaddrs, $base . '.' . $oct);
+    }
+    foreach $entry (services()) {
+        $addr = $entry['address'];
+        if ($addr in @theaddrs) {
+            $port = "$entry['port']";
+            if ('banner' in $entry) {
+                println("$[16]addr $[7]port $entry['banner']");
+            } else {
+                println("$[16]addr $[7]port");
+            }
+        }
+    }
+}
+
+

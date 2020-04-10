@@ -1,0 +1,28 @@
+popup beacon_bottom {
+    menu "EvasionKit" {
+        item "Veil Evasion"{
+            include(script_resource("scripts/veil-evasion.cna"));
+        }
+
+        item "AV Detection" {
+            include(script_resource("scripts/AV-detection.cna"));
+        }
+        
+        item "EDR Detection" {
+            include(script_resource("scripts/EDR-detection.cna"));
+        }
+        item "Remote EDR Detection"{
+            include(script_resource("scripts/remote-EDR-detection.cna"));
+        }
+
+        # 
+        include(script_resource("scripts/Anti-Forensics.cna"));
+
+        # item "Event Viewer Tools"{
+            include(script_resource("scripts/event-viewer-tools.cna"));
+
+        item "Leave No Trace" {
+            include(script_resource("scripts/leave-no-trace.cna"));
+        }
+    }
+}

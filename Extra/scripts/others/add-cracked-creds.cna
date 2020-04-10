@@ -1,0 +1,44 @@
+#############
+# Adds cracked credentials back into CS
+# File must be in *hash*:*password* format to add correctly
+# Should not add duplicates
+#############
+
+sub addCrackedCreds {
+    $currentCreds = credentials();
+    prompt_file_open("Choose hashcat.potfile:", $null, false, 
+    {
+        $handle = openf($1);
+        while $crackedPass (readln($handle))
+        {
+            ($hashFromPot, $password) = split(':',$crackedPass);
+            foreach $hash ($currentCreds)
+            {
+                if (($hashFromPot eq $hash['password']) && ($password ne ""))
+                {
+                    $newCreds =  credentials();
+                    $isThere = false;
+                    foreach $checkHash ($newCreds)
+                    {
+                        if (($hash['user'] eq $checkHash['user']) && ($checkHash['password'] eq $password))
+                        {
+                            $isThere = true;
+                        }
+                    }
+                    if ($isThere eq false)
+                    {
+                        credential_add($hash['user'],$password,$hash['realm'],"Cracked",$hash['host']);
+                    }
+                    #privmsg("mike",$hash['user'] . " " . $password . " " . $hash['realm'] . " " . "Cracked" . " " . $hash['host'])
+                }
+            }
+        }
+    });
+}
+
+
+popup attacks 
+{
+    item "Add hashcat.potfile" {
+        addCrackedCreds();}
+}

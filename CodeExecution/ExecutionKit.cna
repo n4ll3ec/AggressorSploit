@@ -1,0 +1,24 @@
+popup beacon_bottom {
+    menu "ExecutionKit" {
+        menu "Session Passing" {
+            # passing to Empire
+            # item "Send to Empire" {
+                include(script_resource("scripts/beaconpire.cna"));
+            
+            # spawn new session with 
+            item "Windows Notificaiton Framework"{
+                include(script_resource("modules/WindfarmDynamite.exe"));
+            }
+        }
+
+        # 
+        menu "Payload Generation" {
+
+        }
+
+        menu "Attacks" {
+            # include(script_resource("scripts/stageless-python.cna"));
+            # include(script_resource("scripts/stageless-powershell.cna"));
+        }
+    }
+}

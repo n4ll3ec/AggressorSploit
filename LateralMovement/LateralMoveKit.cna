@@ -1,0 +1,32 @@
+popup beacon_bottom {
+    menu "LateralMoveKit" {
+        # item "Silver Ticket"
+        include(script_resource("scripts/silver-tickets.cna"))
+        
+        # 
+        item "DCOM"{
+            include(script_resource("scripts/dcom.cna"));
+            include(script_resource("scripts/dcom_lateral_movement.cna"));
+        } 
+        
+        # MMC20 Application COM Object
+        item "MMC" {
+            include(script_resource("scripts/mmc20.cna"));
+        }
+        #
+        item "Remote MSBuild Exec"{
+            include(script_resource("scripts/msbuild_exec.cna"));
+            include(script_resource("scripts/remote_msbuild.cna"));
+        }
+
+        item "SMBExec_psh"{
+            include(script_resource("scripts/smbexec_psh.cna"));
+        }
+
+        # PowerLessShell
+        item "PowerLessShell" {
+            include(script_resource("scripts/wmi_msbuild.cna"));
+        }
+
+    }
+}

